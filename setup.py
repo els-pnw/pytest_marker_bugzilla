@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="pytest-bugzilla",
-    version="0.1",
+    version="0.2",
     description='py.test bugzilla integration plugin',
     long_description=open('README.txt').read(),
     license='GPL',
