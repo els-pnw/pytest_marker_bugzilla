@@ -8,7 +8,7 @@ setup(
     license='GPL',
     author='Noufal Ibrahim',
     author_email='noufal@nibrahim.net.in' ,
-    url='',
+    url='http://github.com/nibrahim/pytest_bugzilla',
     platforms=['linux', 'osx', 'win32'],
     py_modules=['pytest_bugzilla'],
     entry_points = {'pytest11': ['pytest_bugzilla = pytest_bugzilla'],},
