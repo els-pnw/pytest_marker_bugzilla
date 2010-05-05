@@ -30,10 +30,7 @@ Usage
 -----
 
 After installation (e.g. via ``pip install pytest-bugzilla``) you can
-just invoke ``py.test`` as usual. The plugin is activated by default.
-
-To disable it (eg. if your bugzilla installation is slow), you can use
-the --buzilla-disable command line option
+just invoke ``py.test``with the ``--bugzilla`` flag
 
 Use ``py.test --help`` for additional options.
 
@@ -86,7 +83,7 @@ class BugZillaInteg(object):
         return False
 
     def pytest_report_teststatus(self,report):
-        if not self.config.getvalue("bugzilla_disable") and report.failed:
+        if report.failed:
             if self.analysed(report.item.function.__doc__):
                 return "analysed", "A", "ANALYSED"
 
@@ -96,9 +93,9 @@ class BugZillaInteg(object):
 
 def pytest_addoption(parser):
     group = parser.getgroup('Bugzilla integration')
-    group.addoption('--bugzilla-disable', action='store_true', default=False,
-                    dest='bugzilla_disable',
-                    help="Don't query bugzilla to find analysed bugs")
+    group.addoption('--bugzilla', action='store_true', default=False,
+                    dest='bugzilla',
+                    help="Query bugzilla to find to check statuses of bugs mentioned in test docstring")
     group.addoption("--bugzilla-username", action="store", default = "username",
                     dest = "bugzilla_username",
                     help="Use this username for bugzilla queries")
@@ -113,8 +110,17 @@ def pytest_addoption(parser):
                     help="Enable debugging output for bugzilla plugin (don't use except during plugin development)")
     
 def pytest_configure(config):
-    bugzilla_disable =  config.getvalue("bugzilla_disable")
-    if not bugzilla_disable:
+    bugzilla_enable = any([config.getvalue("bugzilla"),
+                           config.getvalue("bugzilla_username") != "username",
+                           config.getvalue("bugzilla_pw") != "password",
+                           config.getvalue("bugzilla_url") != "https://bugzilla.example.com/xmlrpc.cgi",
+                           config.getvalue("bugzilla_verbose")])
+    # print [config.getvalue("bugzilla"),
+    #        config.getvalue("bugzilla_username") != "username",
+    #        config.getvalue("bugzilla_pw") != "password",
+    #        config.getvalue("bugzilla_url") != "https://bugzilla.example.com/xmlrpc.cgi",
+    #        config.getvalue("bugzilla_url")]
+    if bugzilla_enable:
         bzilla = pyzilla.BugZilla(config.getvalue("bugzilla_url"), config.getvalue("bugzilla_verbose"))
         bzilla.login (username = config.getvalue("bugzilla_username"),
                       password = config.getvalue("bugzilla_pw"))

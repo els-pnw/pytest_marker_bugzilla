@@ -13,10 +13,7 @@ Usage
 -----
 
 After installation (e.g. via ``pip install pytest-bugzilla``) you can
-just invoke ``py.test`` as usual. The plugin is activated by default.
-
-To disable it (eg. if your bugzilla installation is slow), you can use
-the --buzilla-disable command line option
+just invoke ``py.test``with the ``--bugzilla`` flag.
 
 Use ``py.test --help`` for additional options.
 
@@ -33,8 +30,9 @@ Put "#12345" somewhere in the test functions docstring e.g.::
 Bugzilla credentials
 --------------------
 
-You can change the bugzilla server URL/username/password using command
-line options. You can edit the plugin file to change the defaults so
-that they work without having to pass these options explicitly.
+You have to change the bugzilla server URL/username/password using
+command line options. You can edit the plugin file to change the
+defaults so that they work without having to pass these options
+explicitly.
 
 
