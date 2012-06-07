@@ -55,8 +55,7 @@ that they work without having to pass these options explicitly.
 
 import re
 import xmlrpclib
-
-import pyzilla
+import bugzilla
 
 class BugZillaInteg(object):
     def get_bug_status(self, bugid):
