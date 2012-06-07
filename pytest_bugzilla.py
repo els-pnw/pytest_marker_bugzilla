@@ -54,6 +54,7 @@ that they work without having to pass these options explicitly.
 
 
 import re
+import pytest
 import xmlrpclib
 import bugzilla
 
@@ -61,8 +62,10 @@ class BugZillaInteg(object):
     def get_bug_status(self, bugid):
         "Returns the status of the bug with id bugid"
         try:
-            bug = self.bugzilla.Bug.get(dict(ids = [int(bugid)]))
-            return bug['bugs'][0]['internals']['bug_status']
+            bug = self.bugzilla.getbugsimple(bugid)
+            status = str(bug).split(None, 2)[1]
+            print status
+            return status
         except xmlrpclib.Fault, m:
             print "Fault received '%s'"% m
             return "Error"
@@ -74,11 +77,10 @@ class BugZillaInteg(object):
             if val:
                 bugid = val.groups()[0]
                 status = self.get_bug_status(bugid)
-                if status in ["ASSIGNED", "NEW"]:
+                if status in ["ASSIGNED", "NEW", "ON_DEV"]:
                     return True
                 else:
                     pass
-                    #print "Bug exists but is in the '%s' state"% status
         return False
 
     def pytest_report_teststatus(self,report):
@@ -91,6 +93,9 @@ class BugZillaInteg(object):
         self.bugzilla = bugzilla
 
 def pytest_addoption(parser):
+    """
+    Defines the valid options for pytest_bugzilla
+    """
     group = parser.getgroup('Bugzilla integration')
     group.addoption('--bugzilla', action='store_true', default=False,
                     dest='bugzilla',
@@ -114,15 +119,19 @@ def pytest_configure(config):
                            config.getvalue("bugzilla_pw") != "password",
                            config.getvalue("bugzilla_url") != "https://bugzilla.example.com/xmlrpc.cgi",
                            config.getvalue("bugzilla_verbose")])
-    # print [config.getvalue("bugzilla"),
-    #        config.getvalue("bugzilla_username") != "username",
-    #        config.getvalue("bugzilla_pw") != "password",
-    #        config.getvalue("bugzilla_url") != "https://bugzilla.example.com/xmlrpc.cgi",
-    #        config.getvalue("bugzilla_url")]
+    
     if bugzilla_enable:
-        bzilla = pyzilla.BugZilla(config.getvalue("bugzilla_url"), config.getvalue("bugzilla_verbose"))
-        bzilla.login (username = config.getvalue("bugzilla_username"),
-                      password = config.getvalue("bugzilla_pw"))
+        url = config.getvalue('bugzilla_url')
+        user = config.getvalue('bugzilla_username')
+        password = config.getvalue('bugzilla_pw')
+        
+        bzilla = bugzilla.Bugzilla(url=url)
+        try:
+            bzilla.login(user, password)
+        except:
+            print('Error occurred logging in')
+            raise
+        
         config.pluginmanager.register(BugZillaInteg(config, bzilla), "bugzilla")
     
         
