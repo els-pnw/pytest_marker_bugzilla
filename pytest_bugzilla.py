@@ -61,6 +61,7 @@ import bugzilla
 class BugZillaInteg(object):
     def get_bug_status(self, bugid):
         "Returns the status of the bug with id bugid"
+        print "We are in get_bug_status"
         try:
             bug = self.bugzilla.getbugsimple(bugid)
             status = str(bug).split(None, 2)[1]
@@ -72,6 +73,7 @@ class BugZillaInteg(object):
 
     def analysed(self, infostr):
         "Returns True if bug mentioned in the given docstring exists and is open"
+        print infostr
         if infostr:
             val = re.search("#([0-9]*)", infostr)
             if val:
@@ -83,6 +85,7 @@ class BugZillaInteg(object):
                     pass
         return False
 
+    @pytest.mark.tryfirst
     def pytest_report_teststatus(self,report):
         if report.failed:
             if self.analysed(report.item.function.__doc__):
