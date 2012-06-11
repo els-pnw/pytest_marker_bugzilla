@@ -1,6 +1,3 @@
-import re
-import xmlrpclib
-import pytest
 import bugzilla
 import ConfigParser
 
@@ -19,13 +16,20 @@ class BugzillaHooks(object):
             report = __multicall__.execute()
             report.bug_id = bugzilla_marker.args[0]
             
+            bug = self.bugzilla.getbugsimple(report.bug_id)
+            report.status = str(bug).split(None, 2)[1]
+                        
             return report
 
     def pytest_report_teststatus(self, report):
         bug_id = getattr(report, "bug_id", None)
+        status = getattr(report, "status", None)
+        
         if bug_id is not None:
-            if report.failed:
-                return "failed", "P", "PENDINGFIX"
+            #if report.failed:
+            #    return "failed", "P", "PENDINGFIX"
+            if status in ['NEW', 'ASSIGNED', 'ON_DEV']:
+                return "skipped", "S", "PENDINGFIX"
 
 def pytest_addoption(parser):
     """
