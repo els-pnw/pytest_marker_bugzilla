@@ -1,12 +1,14 @@
 import re
 import xmlrpclib
 import pytest
+import bugzilla
 import ConfigParser
 
 
 class BugzillaHooks(object):
-    def __init__(self, config):
+    def __init__(self, config, bugzilla):
         self.config = config
+        self.bugzilla = bugzilla
 
     def pytest_runtest_makereport(self, __multicall__, item):
         if isinstance(item, item.Function):
@@ -15,16 +17,22 @@ class BugzillaHooks(object):
             if bugzilla_marker is None:
                 return
             report = __multicall__.execute()
-            report.bugzilla_url = bugzilla_marker.args[0]
+            report.bug_id = bugzilla_marker.args[0]
+            
             return report
 
     def pytest_report_teststatus(self, report):
-        url = getattr(report, "bugzilla_url", None)
-        if url is not None:
+        bug_id = getattr(report, "bug_id", None)
+        if bug_id is not None:
             if report.failed:
                 return "failed", "P", "PENDINGFIX"
 
 def pytest_addoption(parser):
+    """
+    Add a options section to py.test --help for bugzilla integration.
+    Parse configuration file, bugzilla.cfg and / or the command line options
+    passed.
+    """
     
     config = ConfigParser.ConfigParser()
     config.read('bugzilla.cfg')
@@ -55,8 +63,19 @@ def pytest_addoption(parser):
                     help='Overrides the bugzilla password in bugzilla.cfg.')
     
 def pytest_configure(config):
+    """
+    If bugzilla is neabled, setup a session
+    with bugzilla_url.
+    """
     if config.getvalue("bugzilla"):
-        my = BugzillaHooks(config)
+        url = config.getvalue('bugzilla_url')
+        user = config.getvalue('bugzilla_username')
+        password = config.getvalue('bugzilla_password')
+        
+        bz = bugzilla.Bugzilla(url=url)
+        bz.login(user,password)
+        
+        my = BugzillaHooks(config, bz)
         ok = config.pluginmanager.register(my, "bugzilla_helper")
         assert ok
 
