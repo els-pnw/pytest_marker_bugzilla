@@ -1,6 +1,7 @@
 import re
 import xmlrpclib
 import pytest
+import ConfigParser
 
 
 class BugzillaHooks(object):
@@ -24,11 +25,35 @@ class BugzillaHooks(object):
                 return "failed", "P", "PENDINGFIX"
 
 def pytest_addoption(parser):
+    
+    config = ConfigParser.ConfigParser()
+    config.read('bugzilla.cfg')
+    
     group = parser.getgroup('Bugzilla integration')
-    group.addoption('--bugzilla', action='store_true', default=False,
-          dest='bugzilla',
-          help="Query bugzilla to find to check statuses of tests associated with bugs")
-
+    group.addoption('--bugzilla', 
+                    action='store_true', 
+                    default=False,
+                    dest='bugzilla',
+                    help='Enable Bugzilla support.')
+    group.addoption('--bugzilla-url',
+                    action='store',
+                    dest='bugzilla_url',
+                    default=config.get('DEFAULT', 'bugzilla_url'),
+                    metavar='url',
+                    help='Overrides the xmlrpc url for bugzilla found in bugzilla.cfg.')
+    group.addoption('--bugzilla-user',
+                    action='store',
+                    dest='bugzilla_username',
+                    default=config.get('DEFAULT', 'bugzilla_username'),
+                    metavar='username',
+                    help='Overrides the bugzilla username in bugzilla.cfg.')
+    group.addoption('--bugzilla-password',
+                    action='store',
+                    dest='bugzilla_password',
+                    default=config.get('DEFAULT', 'bugzilla_password'),
+                    metavar='password',
+                    help='Overrides the bugzilla password in bugzilla.cfg.')
+    
 def pytest_configure(config):
     if config.getvalue("bugzilla"):
         my = BugzillaHooks(config)
