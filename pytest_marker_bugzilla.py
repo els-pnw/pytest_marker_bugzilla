@@ -1,6 +1,15 @@
 import bugzilla
 import ConfigParser
 import pytest
+"""
+This plugin integrates pytest with bugzilla; allowing the tester to 
+mark a test with a bug id.  The test will then be skipped until the bug
+status is no longer NEW, ON_DEV, or ASSIGNED.
+
+You must set the url either at the command line or in bugzilla.cfg.
+
+Author: Eric L. Sammons
+"""
 
 
 class BugzillaHooks(object):

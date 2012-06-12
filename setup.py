@@ -15,7 +15,7 @@ setup(
     zip_safe=False,
     install_requires = ['python-bugzilla>=0.6.2','pytest>=2.2.4'],
     classifiers=[
-    'Development Status :: Beta',
+    'Development Status :: 3 - Alpha',
     'Intended Audience :: Developers',
     'License :: OSI Approved :: GNU General Public License (GPL)',
     'Operating System :: POSIX',
