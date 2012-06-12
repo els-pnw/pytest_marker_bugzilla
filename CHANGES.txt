@@ -1,0 +1,2 @@
+v0.1, Wed May  5 11:54:51 IST 2010 -- Initial release.
+v0.2, Thu May  6 01:15:55 IST 2010 -- Disable running by default and some minor naming changes to make it confirm to conventions.
