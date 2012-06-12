@@ -8,6 +8,9 @@ on and therefore the test should be skipped and will be.
 bug_status not in ['NEW', 'ASSIGNED', 'ON_DEV'] means the bug is in a state ready 
 for QE and the test will be run and reported on.
 
+Please feel free to contribute by forking and submitting pull requests or by submitting
+feature requests or issues to [issues][githubissues]
+
 ## Requires
   * pytest >= 2.2.3
   * python-bugzilla >= 0.6.2
@@ -36,3 +39,4 @@ for QE and the test will be run and reported on.
      ``py.test --bugzilla``   
      
 [pytest]: http://pytest.org/latest/
+[githubissues]: https://github.com/eanxgeek/pytest_marker_bugzilla/issues
