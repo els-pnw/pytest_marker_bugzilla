@@ -11,10 +11,10 @@
 ## Usage
   1. Create a bugzilla.cfg in the root of your tests
   
-             [DEFAULT]  
-             bugzilla_url = https://bugzilla.fqdn/xmlrpc.cgi  
-             bugzilla_username = USERNAME (or blank for public bugs)  
-             bugzilla_password = PASSWORD (or blank for public bugs)  
+     [DEFAULT]  
+     bugzilla_url = https://bugzilla.fqdn/xmlrpc.cgi  
+     bugzilla_username = USERNAME (or blank for public bugs)  
+     bugzilla_password = PASSWORD (or blank for public bugs)  
              
      Options can be overridden with command line options.
      
