@@ -11,7 +11,7 @@ setup(
     url='http://github.com/eanxgeek/pytest_marker_bugzilla',
     platforms=['linux', 'osx', 'win32'],
     py_modules=['pytest_marker_bugzilla'],
-    entry_points = {'pytest22': ['pytest_marker_bugzilla = pytest_marker_bugzilla'],},
+    entry_points = {'pytest11': ['pytest_marker_bugzilla = pytest_marker_bugzilla'],},
     zip_safe=False,
     install_requires = ['python-bugzilla>=0.6.2','pytest>=2.2.4'],
     classifiers=[
