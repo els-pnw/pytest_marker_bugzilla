@@ -1,5 +1,12 @@
 # Intro
-[PyTest][pytest] plugin for bugzilla integration.
+[PyTest][pytest] plugin for bugzilla integration.  This plugin currently assumes the
+following workflow:
+
+bug_status in ['NEW', 'ASSIGNED', 'ON_DEV'] means the bug is known and is being worked
+on and therefore the test should be skipped and will be.
+
+bug_status not in ['NEW', 'ASSIGNED', 'ON_DEV'] means the bug is in a state ready 
+for QE and the test will be run and reported on.
 
 ## Requires
   * pytest >= 2.2.3
