@@ -8,6 +8,6 @@ setup(
     license='GPL',
     author='Eric Sammons',
     author_email='elsammons@gmail.com' ,
-    url='http://github.com/eanxgeek/pytest_marker_bugzilla',
+    url='git://github.com/eanxgeek/pytest_marker_bugzilla.git',
     py_modules=['pytest-marker-bugzilla',],
     )
