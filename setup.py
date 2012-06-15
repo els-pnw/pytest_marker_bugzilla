@@ -6,7 +6,7 @@ setup(
     description='py.test bugzilla integration plugin, using markers',
     author='Eric Sammons',
     author_email='elsammons@gmail.com' ,
-    url='https://github.com/eanxgeek/pytest_marker_bugzilla',
+    url='https://github.com/eanxgeek/pytest_marker_bugzilla.git',
     py_modules=['pytest_marker_bugzilla',],
     license='GPL',
     keywords='py.test pytest bugzilla',
