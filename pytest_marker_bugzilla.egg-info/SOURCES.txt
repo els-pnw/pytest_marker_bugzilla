@@ -1,5 +1,0 @@
-setup.py
-pytest_marker_bugzilla.egg-info/PKG-INFO
-pytest_marker_bugzilla.egg-info/SOURCES.txt
-pytest_marker_bugzilla.egg-info/dependency_links.txt
-pytest_marker_bugzilla.egg-info/top_level.txt
