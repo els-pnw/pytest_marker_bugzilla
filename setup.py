@@ -9,8 +9,9 @@ setup(
     url='https://github.com/eanxgeek/pytest_marker_bugzilla.git',
     py_modules=['pytest_marker_bugzilla',],
     license='GPL',
-    keywords='py.test pytest bugzilla',
     entry_points={'pytest11': ['pytest_marker_bugzilla = pytest_marker_bugzilla']},
+    install_requires = ['python-bugzilla', 'py>=1.4', 'pytest>=2.2.4']
+    keywords='py.test pytest bugzilla',
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
