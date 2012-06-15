@@ -10,7 +10,7 @@ setup(
     py_modules=['pytest_marker_bugzilla',],
     license='GPL',
     keywords='py.test pytest bugzilla',
-    entry_points={'pytest11': ['pytest_marker_bugzilla = pytest_marker_bugzilla.pytest_marker_bugzilla']},
+    entry_points={'pytest11': ['pytest_marker_bugzilla = pytest_marker_bugzilla']},
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
