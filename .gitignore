@@ -1,4 +1,6 @@
 *.pyc
 *.cfg
+*.swp
+*.egg-info
 build
 dist
