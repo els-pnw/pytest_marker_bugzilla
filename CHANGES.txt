@@ -1,0 +1,2 @@
+v0.04, Mon Jun 18 2012 -- Now supports installing the plugin, but not having a bugzilla.cfg or options.
+v0.04, Mon Jun 18 2012 -- Fix setup.py to use README.txt

@@ -2,9 +2,9 @@ from setuptools import setup
 
 setup(
     name="pytest-marker-bugzilla",
-    version="0.01",
+    version="0.05",
     description='py.test bugzilla integration plugin, using markers',
-    long_description=open('README.md').read(),
+    long_description=open('README.txt').read(),
     license='GPL',
     author='Eric Sammons',
     author_email='elsammons@gmail.com' ,
@@ -27,4 +27,3 @@ setup(
     'Programming Language :: Python',
     ],
 )
-

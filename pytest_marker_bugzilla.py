@@ -1,6 +1,7 @@
 import bugzilla
 import ConfigParser
 import pytest
+import os
 """
 This plugin integrates pytest with bugzilla; allowing the tester to 
 mark a test with a bug id.  The test will then be skipped until the bug
@@ -33,35 +34,25 @@ class BugzillaHooks(object):
         if status in ['NEW', 'ASSIGNED', 'ON_DEV']:
             pytest.skip("https://bugzilla.redhat.com/show_bug.cgi?id=%s" % bug_id)
 
-"""        
-    def pytest_report_teststatus(self, report):
-        bug_id = getattr(report, "bug_id", None)
-        status = getattr(report, "status", None)
-        
-        if bug_id is not None:
-            #if report.failed:
-            #    return "failed", "P", "PENDINGFIX"
-            if status in ['NEW', 'ASSIGNED', 'ON_DEV']:
-                pytest.skip("%s" % bug_id)
-                #return "skipped", "S", "SKIPPED_BUG"
-
-"""
 def pytest_addoption(parser):
     """
     Add a options section to py.test --help for bugzilla integration.
     Parse configuration file, bugzilla.cfg and / or the command line options
     passed.
-    """
-    
-    config = ConfigParser.ConfigParser()
-    config.read('bugzilla.cfg')
-    
+    """ 
     group = parser.getgroup('Bugzilla integration')
     group.addoption('--bugzilla', 
                     action='store_true', 
                     default=False,
                     dest='bugzilla',
                     help='Enable Bugzilla support.')
+    
+    config = ConfigParser.ConfigParser()
+    if os.path.exists('bugzilla.cfg'):
+        config.read('bugzilla.cfg')
+    else:
+        return
+    
     group.addoption('--bugzilla-url',
                     action='store',
                     dest='bugzilla_url',
@@ -80,13 +71,15 @@ def pytest_addoption(parser):
                     default=config.get('DEFAULT', 'bugzilla_password'),
                     metavar='password',
                     help='Overrides the bugzilla password in bugzilla.cfg.')
-    
+
 def pytest_configure(config):
     """
     If bugzilla is neabled, setup a session
     with bugzilla_url.
     """
-    if config.getvalue("bugzilla"):
+    if config.getvalue("bugzilla") and all([config.getvalue('bugzilla_url'),
+                                            config.getvalue('bugzilla_username'),
+                                            config.getvalue('bugzilla_password')]):
         url = config.getvalue('bugzilla_url')
         user = config.getvalue('bugzilla_username')
         password = config.getvalue('bugzilla_password')
@@ -97,4 +90,5 @@ def pytest_configure(config):
         my = BugzillaHooks(config, bz)
         ok = config.pluginmanager.register(my, "bugzilla_helper")
         assert ok
+
 
