@@ -19,6 +19,10 @@ class BugzillaHooks(object):
         self.bugzilla = bugzilla
 
     def pytest_runtest_setup(self, item):
+        """
+        Run test setup.
+        :param item: test being run.
+        """
         
         if 'bugzilla' in item.keywords:
             marker = item.keywords['bugzilla']
@@ -39,6 +43,8 @@ def pytest_addoption(parser):
     Add a options section to py.test --help for bugzilla integration.
     Parse configuration file, bugzilla.cfg and / or the command line options
     passed.
+    
+    :param parser: Command line options.
     """ 
     group = parser.getgroup('Bugzilla integration')
     group.addoption('--bugzilla', 
@@ -76,6 +82,8 @@ def pytest_configure(config):
     """
     If bugzilla is neabled, setup a session
     with bugzilla_url.
+    
+    :param config: configuration object
     """
     if config.getvalue("bugzilla") and all([config.getvalue('bugzilla_url'),
                                             config.getvalue('bugzilla_username'),
