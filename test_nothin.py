@@ -8,12 +8,12 @@ class TestNothin(object):
     def test_new_bz(self):
         print('hello')
         assert(os.path.exists('/etc'))
-        
+
     @pytest.mark.bugzilla('12345')
     def test_closed_bz(self):
         assert(os.path.exists('/etc'))
-           
+
     @pytest.mark.bugzilla('12345')
     def test_closed_bz_with_failure(self):
-        assert(os.path.exists('/etcccc')) 
-    
+        assert(os.path.exists('/etcccc'))
+
