@@ -28,8 +28,9 @@ class BugzillaHooks(object):
             marker = item.keywords['bugzilla']
             if len(marker.args) != 1:
                 raise TypeError('Bugzilla marker must have exactly 1 argument')
+        else:
+            return
         
-            
         bug_id = item.keywords['bugzilla'].args[0]
     
         bug = self.bugzilla.getbugsimple(bug_id)

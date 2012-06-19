@@ -1,2 +1,3 @@
-v0.04, Mon Jun 18 2012 -- Now supports installing the plugin, but not having a bugzilla.cfg or options.
-v0.04, Mon Jun 18 2012 -- Fix setup.py to use README.txt
+v0.05, Mon Jun 18 2012 -- Now supports installing the plugin, but not having a bugzilla.cfg or options.
+v0.05, Mon Jun 18 2012 -- Fix setup.py to use README.txt
+v0.06, Tue Jun 19 2012 -- Fix issue related to keyerror: 'bugzilla' when no marker was set but --bugzilla was passed at cmd line
