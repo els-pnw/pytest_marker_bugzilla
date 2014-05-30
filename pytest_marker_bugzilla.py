@@ -12,33 +12,73 @@ You must set the url either at the command line or in bugzilla.cfg.
 
 Author: Eric L. Sammons
 """
+_bugs_pool = {}
+
+
+class BugzillaBugs(object):
+    def __init__(self, appliance_version, bugzilla, *bug_ids):
+        self.version = appliance_version
+        self.bugzilla = bugzilla
+        self.bug_ids = bug_ids
+
+    @property
+    def bugs_gen(self):
+        for bug_id in self.bug_ids:
+            bug = self.bugzilla.getbug(bug_id)
+            if bug_id not in _bugs_pool:
+                _bugs_pool[bug_id] = bug
+            yield _bugs_pool[bug_id]
 
 
 class BugzillaHooks(object):
-    def __init__(self, config, bugzilla):
+    def __init__(self, config, bugzilla, version=None):
         self.config = config
         self.bugzilla = bugzilla
+        self.version = version
 
     def pytest_runtest_setup(self, item):
         """
         Run test setup.
         :param item: test being run.
         """
-
-        if 'bugzilla' in item.keywords:
-            marker = item.keywords['bugzilla']
-            if len(marker.args) != 1:
-                raise TypeError('Bugzilla marker must have exactly 1 argument')
-        else:
+        if "bugzilla" not in item.keywords:
             return
+        bugs = item.funcargs["bugs"]
+        will_skip = True
+        skippers = []
+        for bug in bugs.bugs_gen:
+            if bug.status not in {"NEW", "ASSIGNED", "ON_DEV"}:
+                will_skip = False
+            else:
+                skippers.append(bug)
 
-        bug_id = item.keywords['bugzilla'].args[0]
+        if will_skip:
+            pytest.skip(
+                "Skipping this test because all of these assigned bugs:\n{}".format(
+                    "\n".join(
+                        [
+                            "{} https://bugzilla.redhat.com/show_bug.cgi?id={}".format(
+                                bug.status, bug.id
+                            )
+                            for bug
+                            in skippers
+                        ]
+                    )
+                )
+            )
 
-        bug = self.bugzilla.getbugsimple(bug_id)
-        status = str(bug).split(None, 2)[1]
-
-        if status in ['NEW', 'ASSIGNED', 'ON_DEV']:
-            pytest.skip("https://bugzilla.redhat.com/show_bug.cgi?id=%s" % bug_id)
+    def pytest_collection_modifyitems(self, session, config, items):
+        reporter = config.pluginmanager.getplugin("terminalreporter")
+        reporter.write("Checking for bugzilla-related tests\n", bold=True)
+        cache = {}
+        for i, item in enumerate(filter(lambda i: i.get_marker("bugzilla") is not None, items)):
+            marker = item.get_marker('bugzilla')
+            bugs = tuple(sorted(set(map(int, marker.args))))  # (O_O) for caching
+            if bugs not in cache:
+                reporter.write(".")
+                cache[bugs] = BugzillaBugs(self.version, self.bugzilla, *bugs)
+            item.funcargs["bugs"] = cache[bugs]
+        reporter.write("\nChecking for bugzilla-related tests has finished\n", bold=True)
 
 
 def pytest_addoption(parser):
@@ -48,7 +88,7 @@ def pytest_addoption(parser):
     passed.
 
     :param parser: Command line options.
-    """ 
+    """
     group = parser.getgroup('Bugzilla integration')
     group.addoption('--bugzilla',
                     action='store_true',
@@ -80,6 +120,12 @@ def pytest_addoption(parser):
                     default=config.get('DEFAULT', 'bugzilla_password'),
                     metavar='password',
                     help='Overrides the bugzilla password in bugzilla.cfg.')
+    group.addoption('--bugzilla-project-version',
+                    action='store',
+                    dest='bugzilla_version',
+                    default=config.get('DEFAULT', 'bugzilla_version'),
+                    metavar='version',
+                    help='Overrides the project version in bugzilla.cfg.')
 
 
 def pytest_configure(config):
@@ -91,14 +137,14 @@ def pytest_configure(config):
     """
     if config.getvalue("bugzilla") and all([config.getvalue('bugzilla_url'),
                                             config.getvalue('bugzilla_username'),
-                                            config.getvalue('bugzilla_password')]):
+                                            config.getvalue('bugzilla_password'),
+                                            config.getvalue('bugzilla_version')]):
         url = config.getvalue('bugzilla_url')
         user = config.getvalue('bugzilla_username')
         password = config.getvalue('bugzilla_password')
+        version = config.getvalue('bugzilla_version')
 
-        bz = bugzilla.Bugzilla(url=url)
-        bz.login(user, password)
+        bz = bugzilla.Bugzilla(url=url, user=user, password=password)
 
-        my = BugzillaHooks(config, bz)
-        ok = config.pluginmanager.register(my, "bugzilla_helper")
-        assert ok
+        my = BugzillaHooks(config, bz, version)
+        assert config.pluginmanager.register(my, "bugzilla_helper")
