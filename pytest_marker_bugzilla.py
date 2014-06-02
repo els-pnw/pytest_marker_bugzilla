@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
-import bugzilla
 import ConfigParser
-import pytest
+import bugzilla
+import inspect
 import os
+import pytest
+import re
+from distutils.version import LooseVersion
+from functools import wraps
 """This plugin integrates pytest with bugzilla
 
 It allows the tester to mark a test with a bug id. The test will then be skipped until the bug
@@ -10,31 +14,102 @@ status is no longer NEW, ON_DEV, or ASSIGNED.
 
 You must set the url either at the command line or in bugzilla.cfg.
 
-Author: Eric L. Sammons
+An update to this plugin brings new possibilities. You can now add multiple bugs to one test:
+
+    @pytest.mark.bugzilla(1234, 2345, "3456")
+    def test_something():
+        pass
+
+You can also add "conditional guards", which will xfail or skip the test when condition is met:
+
+    @pytest.mark.bugzilla(1234, skip_when=lambda bug: bug.status == "POST")
+    or
+    @pytest.mark.bugzilla(567, xfail_when=lambda bug, version: bug.fixed_in > version)
+
+The guard is a function, it will receive max. 2 parameters. It depends what parameters you specify.
+The parameters are `bug` which points to a specific BZ bug, and `version` which is tested product`s
+version. Order or presence does not matter.
+
+Additionally to the original parameters to this marker you can use --bugzilla-looseversion-fields.
+It accepts a string of field names separated with comma. Fields specified will have their getter
+function overriden that they return LooseVersion instead of string enabling easy comparison in
+condition guards or inside tests.
+
+    --bugzilla-looseversion-fields=fixed_in,target_release
+
+Authors:
+    Eric L. Sammons
+    Milan Falešník
 """
-_bugs_pool = {}
+_bugs_pool = {}  # Cache bugs for greater speed
+
+
+def loose_func_gen(attr):
+    def version_getter(self):
+        return LooseVersion(re.sub(r"^[^0-9]+", "", getattr(self, attr)))
+    version_getter.__name__ = attr
+    return loose_func_gen
+
+
+def kwargify(f):
+    """Convert function having only positional args to a function taking dictionary"""
+    @wraps(f)
+    def wrapped(**kwargs):
+        args = []
+        for arg in inspect.getargspec(f).args:
+            if arg not in kwargs:
+                raise TypeError("Required parameter {} not found in the context!".format(arg))
+            args.append(kwargs[arg])
+        return f(*args)
+    return wrapped
+
+
+class BugWrapper(object):
+    def __init__(self, bug, loose):
+        self._bug = bug
+        # We need to generate looseversions for simple comparison of the version params
+        for loose_version_param in loose:
+            setattr(self, loose_version_param, property(loose_func_gen(loose_version_param)))
+
+    def __getattr__(self, attr):
+        """Relay the query to the bug object if we did not override."""
+        return getattr(self._bug, attr)
 
 
 class BugzillaBugs(object):
-    def __init__(self, appliance_version, bugzilla, *bug_ids):
-        self.version = appliance_version
+    def __init__(self, bugzilla, loose, *bug_ids):
         self.bugzilla = bugzilla
         self.bug_ids = bug_ids
+        self.loose = loose
 
     @property
     def bugs_gen(self):
         for bug_id in self.bug_ids:
-            bug = self.bugzilla.getbug(bug_id)
+            bug = BugWrapper(self.bugzilla.getbug(bug_id), self.loose)
             if bug_id not in _bugs_pool:
                 _bugs_pool[bug_id] = bug
             yield _bugs_pool[bug_id]
 
+    def bug(self, id):
+        """Returns Bugzilla's Bug object for given ID"""
+        id = int(id)
+        if id in _bugs_pool:
+            return _bugs_pool[id]
+        for bug_id in self.bug_ids:
+            if id == bug_id:
+                bug = BugWrapper(self.bugzilla.getbug(bug_id), self.loose)
+                _bugs_pool[bug_id] = bug
+                return bug
+        else:
+            raise ValueError("Could not find bug with id {}".format(id))
+
 
 class BugzillaHooks(object):
-    def __init__(self, config, bugzilla, version=None):
+    def __init__(self, config, bugzilla, loose, version="0"):
         self.config = config
         self.bugzilla = bugzilla
         self.version = version
+        self.loose = loose
 
     def pytest_runtest_setup(self, item):
         """
@@ -67,6 +142,29 @@ class BugzillaHooks(object):
                 )
             )
 
+        marker = item.get_marker('bugzilla')
+        xfail = kwargify(marker.kwargs.get("xfail_when", lambda: False))
+        skip = kwargify(marker.kwargs.get("skip_when", lambda: False))
+        if skip:
+            self.evaluate_skip(skip, bugs)
+        if xfail:
+            if self.evaluate_xfail(xfail, bugs):
+                item.add_marker("xfail")
+
+    def evaluate_skip(self, skip, bugs):
+        for bug in bugs.bugs_gen:
+            context = {"bug": bug, "version": LooseVersion(self.version)}
+            if skip(**context):
+                pytest.skip("Skipped due to a given condition!")
+
+    def evaluate_xfail(self, xfail, bugs):
+        for bug in bugs.bugs_gen:
+            context = {"bug": bug, "version": LooseVersion(self.version)}
+            if xfail(**context):
+                return True
+        else:
+            return False
+
     def pytest_collection_modifyitems(self, session, config, items):
         reporter = config.pluginmanager.getplugin("terminalreporter")
         reporter.write("Checking for bugzilla-related tests\n", bold=True)
@@ -76,7 +174,7 @@ class BugzillaHooks(object):
             bugs = tuple(sorted(set(map(int, marker.args))))  # (O_O) for caching
             if bugs not in cache:
                 reporter.write(".")
-                cache[bugs] = BugzillaBugs(self.version, self.bugzilla, *bugs)
+                cache[bugs] = BugzillaBugs(self.bugzilla, self.loose, *bugs)
             item.funcargs["bugs"] = cache[bugs]
         reporter.write("\nChecking for bugzilla-related tests has finished\n", bold=True)
 
@@ -126,6 +224,12 @@ def pytest_addoption(parser):
                     default=config.get('DEFAULT', 'bugzilla_version'),
                     metavar='version',
                     help='Overrides the project version in bugzilla.cfg.')
+    group.addoption('--bugzilla-looseversion-fields',
+                    action='store',
+                    dest='bugzilla_loose',
+                    default=config.get('DEFAULT', 'bugzilla_loose'),
+                    metavar='loose',
+                    help='Overrides the project loose in bugzilla.cfg.')
 
 
 def pytest_configure(config):
@@ -138,13 +242,17 @@ def pytest_configure(config):
     if config.getvalue("bugzilla") and all([config.getvalue('bugzilla_url'),
                                             config.getvalue('bugzilla_username'),
                                             config.getvalue('bugzilla_password'),
-                                            config.getvalue('bugzilla_version')]):
+                                            config.getvalue('bugzilla_version'),
+                                            config.getvalue('bugzilla_loose')]):
         url = config.getvalue('bugzilla_url')
         user = config.getvalue('bugzilla_username')
         password = config.getvalue('bugzilla_password')
         version = config.getvalue('bugzilla_version')
+        loose = [x.strip() for x in config.getvalue('bugzilla_loose').strip().split(",")]
+        if len(loose) == 1 and len(loose[0]) == 0:
+            loose = []
 
         bz = bugzilla.Bugzilla(url=url, user=user, password=password)
 
-        my = BugzillaHooks(config, bz, version)
+        my = BugzillaHooks(config, bz, loose, version)
         assert config.pluginmanager.register(my, "bugzilla_helper")
