@@ -20,6 +20,9 @@ An update to this plugin brings new possibilities. You can now add multiple bugs
     def test_something():
         pass
 
+In order to skip the test, all of the specified bugs must lead to skipping. Even just one unskipped
+means that the test will not be skipped.
+
 You can also add "conditional guards", which will xfail or skip the test when condition is met:
 
     @pytest.mark.bugzilla(1234, skip_when=lambda bug: bug.status == "POST")
@@ -126,21 +129,18 @@ class BugzillaHooks(object):
                 will_skip = False
             else:
                 skippers.append(bug)
+        url = "https://bugzilla.redhat.com/show_bug.cgi?id="
 
         if will_skip:
             pytest.skip(
                 "Skipping this test because all of these assigned bugs:\n{}".format(
                     "\n".join(
                         [
-                            "{} https://bugzilla.redhat.com/show_bug.cgi?id={}".format(
-                                bug.status, bug.id
+                            "{} {}{}".format(
+                                bug.status, url, bug.id
                             )
                             for bug
-                            in skippers
-                        ]
-                    )
-                )
-            )
+                            in skippers])))
 
         marker = item.get_marker('bugzilla')
         xfail = kwargify(marker.kwargs.get("xfail_when", lambda: False))
@@ -148,8 +148,14 @@ class BugzillaHooks(object):
         if skip:
             self.evaluate_skip(skip, bugs)
         if xfail:
-            if self.evaluate_xfail(xfail, bugs):
-                item.add_marker("xfail")
+            xfailed = self.evaluate_xfail(xfail, bugs)
+            if xfailed:
+                item.add_marker(
+                    pytest.mark.xfail(
+                        reason="xfailing due to bugs: {}".format(
+                            ", ".join(
+                                map(
+                                    lambda bug: "{}{}".format(url, str(bug.id)), xfailed)))))
 
     def evaluate_skip(self, skip, bugs):
         for bug in bugs.bugs_gen:
@@ -158,12 +164,12 @@ class BugzillaHooks(object):
                 pytest.skip("Skipped due to a given condition!")
 
     def evaluate_xfail(self, xfail, bugs):
+        results = []
         for bug in bugs.bugs_gen:
             context = {"bug": bug, "version": LooseVersion(self.version)}
             if xfail(**context):
-                return True
-        else:
-            return False
+                results.append(bug)
+        return results
 
     def pytest_collection_modifyitems(self, session, config, items):
         reporter = config.pluginmanager.getplugin("terminalreporter")
@@ -177,6 +183,7 @@ class BugzillaHooks(object):
                 cache[bugs] = BugzillaBugs(self.bugzilla, self.loose, *bugs)
             item.funcargs["bugs"] = cache[bugs]
         reporter.write("\nChecking for bugzilla-related tests has finished\n", bold=True)
+        reporter.write("{} bug marker sets found.\n".format(len(cache)), bold=True)
 
 
 def pytest_addoption(parser):
@@ -239,6 +246,7 @@ def pytest_configure(config):
 
     :param config: configuration object
     """
+    config.addinivalue_line("markers", """bugzilla(*bug_ids, **guards): Bugzilla integration""")
     if config.getvalue("bugzilla") and all([config.getvalue('bugzilla_url'),
                                             config.getvalue('bugzilla_username'),
                                             config.getvalue('bugzilla_password'),
