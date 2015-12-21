@@ -41,6 +41,7 @@ class TestNothing(object):
                             "[DEFAULT]",
                             "bugzilla_url = "
                             "https://bugzilla.redhat.com/xmlrpc.cgi",
+
                         ]
                     )
                 )

@@ -1,0 +1,29 @@
+s tests/test_bugzilla.py::TestNothing::()::test_new_bz
+ Skipped: Bug summary: ONE Status: NEW URL: https://bugzilla.redhat.com/show_bug.cgi?id=1
+. tests/test_bugzilla.py::TestNothing::()::test_closed_bz
+F tests/test_bugzilla.py::TestNothing::()::test_closed_bz_with_failure
+ self = <tests.test_bugzilla.TestNothing object at 0x7ff246593dd0>
+ 
+     @pytest.mark.bugzilla({'2': {}})
+     def test_closed_bz_with_failure(self):
+ >       assert(os.path.exists('/etcccc'))
+ E       assert <function exists at 0x7ff254712938>('/etcccc')
+ E        +  where <function exists at 0x7ff254712938> = <module 'posixpath' from '/usr/lib64/python2.7/posixpath.pyc'>.exists
+ E        +    where <module 'posixpath' from '/usr/lib64/python2.7/posixpath.pyc'> = os.path
+ 
+ tests/test_bugzilla.py:22: AssertionError
+. tests/test_bugzilla.py::TestNothing::()::test_without_bugzilla
+F tests/test_bugzilla.py::TestNothing::()::test_fail_without_bugzilla
+ self = <tests.test_bugzilla.TestNothing object at 0x7ff2465a8550>
+ 
+     def test_fail_without_bugzilla(self):
+ >       assert(os.path.exists('/etc123'))
+ E       assert <function exists at 0x7ff254712938>('/etc123')
+ E        +  where <function exists at 0x7ff254712938> = <module 'posixpath' from '/usr/lib64/python2.7/posixpath.pyc'>.exists
+ E        +    where <module 'posixpath' from '/usr/lib64/python2.7/posixpath.pyc'> = os.path
+ 
+ tests/test_bugzilla.py:28: AssertionError
+. tests/test_bugzilla.py::TestNothing::()::test_verified_bz
+. tests/test_bugzilla.py::TestNothing::()::test_closed_bz_2
+s tests/test_bugzilla.py::TestNothing::()::test_modified_bz
+ Skipped: Bug summary: FIVE Status: MODIFIED URL: https://bugzilla.redhat.com/show_bug.cgi?id=5
