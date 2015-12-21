@@ -61,7 +61,7 @@ def kwargify(f):
         args = []
         for arg in inspect.getargspec(f).args:
             if arg not in kwargs:
-                raise TypeError("Required parameter {} not found in the context!".format(arg))
+                raise TypeError("Required parameter {0} not found in the context!".format(arg))
             args.append(kwargs[arg])
         return f(*args)
     return wrapped
@@ -104,7 +104,7 @@ class BugzillaBugs(object):
                 _bugs_pool[bug_id] = bug
                 return bug
         else:
-            raise ValueError("Could not find bug with id {}".format(id))
+            raise ValueError("Could not find bug with id {0}".format(id))
 
 
 class BugzillaHooks(object):
@@ -125,7 +125,7 @@ class BugzillaHooks(object):
         will_skip = True
         skippers = []
         for bug in bugs.bugs_gen:
-            if bug.status not in {"NEW", "ASSIGNED", "ON_DEV"}:
+            if bug.status not in ["NEW", "ASSIGNED", "ON_DEV"]:
                 will_skip = False
             else:
                 skippers.append(bug)
@@ -133,10 +133,10 @@ class BugzillaHooks(object):
 
         if will_skip:
             pytest.skip(
-                "Skipping this test because all of these assigned bugs:\n{}".format(
+                "Skipping this test because all of these assigned bugs:\n{0}".format(
                     "\n".join(
                         [
-                            "{} {}{}".format(
+                            "{0} {1}{2}".format(
                                 bug.status, url, bug.id
                             )
                             for bug
@@ -152,10 +152,10 @@ class BugzillaHooks(object):
             if xfailed:
                 item.add_marker(
                     pytest.mark.xfail(
-                        reason="xfailing due to bugs: {}".format(
+                        reason="xfailing due to bugs: {0}".format(
                             ", ".join(
                                 map(
-                                    lambda bug: "{}{}".format(url, str(bug.id)), xfailed)))))
+                                    lambda bug: "{0}{1}".format(url, str(bug.id)), xfailed)))))
 
     def evaluate_skip(self, skip, bugs):
         for bug in bugs.bugs_gen:
@@ -183,7 +183,7 @@ class BugzillaHooks(object):
                 cache[bugs] = BugzillaBugs(self.bugzilla, self.loose, *bugs)
             item.funcargs["bugs"] = cache[bugs]
         reporter.write("\nChecking for bugzilla-related tests has finished\n", bold=True)
-        reporter.write("{} bug marker sets found.\n".format(len(cache)), bold=True)
+        reporter.write("{0} bug marker sets found.\n".format(len(cache)), bold=True)
 
 
 def pytest_addoption(parser):
