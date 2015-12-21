@@ -1,24 +1,26 @@
-import pytest
+"""
+This is test case to test bugzilla plugin.
+"""
 import os
-import xmlrpclib
+import pytest
+
 
 @pytest.mark.skip_selenium
 @pytest.mark.nondestructive
-class TestNothin(object):
+class TestNothing(object):
 
-    @pytest.mark.bugzilla('824975')
+    @pytest.mark.bugzilla('1')
     def test_new_bz(self):
-        print('hello')
-        assert(os.path.exists('/etc'))
-        
-    @pytest.mark.bugzilla('12345')
+        assert(os.path.exists('/etcccc'))
+
+    @pytest.mark.bugzilla('2')
     def test_closed_bz(self):
         assert(os.path.exists('/etc'))
-           
-    @pytest.mark.bugzilla('12345')
+
+    @pytest.mark.bugzilla('2')
     def test_closed_bz_with_failure(self):
-        assert(os.path.exists('/etcccc')) 
-    
+        assert(os.path.exists('/etcccc'))
+
     def test_without_bugzilla(self):
         assert(os.path.exists('/etc'))
 
