@@ -57,6 +57,12 @@ Authors:
     Milan Falešník
 """
 _bugs_pool = {}  # Cache bugs for greater speed
+_default_looseversion_fields = "fixed_in,target_release"
+
+
+def get_value_from_config_parser(parser, option, default=None):
+    """Wrapper around ConfigParser to do not fail on missing options"""
+    return parser.defaults().get(option, default)
 
 
 def loose_func_gen(attr):
@@ -194,14 +200,22 @@ class BugzillaHooks(object):
 
     def evaluate_skip(self, skip, bugs):
         for bug in bugs.bugs_gen:
-            context = {"bug": bug, "version": LooseVersion(self.version)}
+            context = {"bug": bug}
+            if self.version:
+                context["version"] = LooseVersion(self.version)
             if skip(**context):
-                pytest.skip("Skipped due to a given condition!")
+                pytest.skip(
+                    "Skipped due to a given condition: {0}".format(
+                        inspect.getsource(skip)
+                    )
+                )
 
     def evaluate_xfail(self, xfail, bugs):
         results = []
         for bug in bugs.bugs_gen:
-            context = {"bug": bug, "version": LooseVersion(self.version)}
+            context = {"bug": bug}
+            if self.version:
+                context["version"] = LooseVersion(self.version)
             if xfail(**context):
                 results.append(bug)
         return results
@@ -236,50 +250,65 @@ def pytest_addoption(parser):
 
     :param parser: Command line options.
     """
-    group = parser.getgroup('Bugzilla integration')
-    group.addoption('--bugzilla',
-                    action='store_true',
-                    default=False,
-                    dest='bugzilla',
-                    help='Enable Bugzilla support.')
-
     config = ConfigParser.ConfigParser()
-    if os.path.exists('bugzilla.cfg'):
-        config.read('bugzilla.cfg')
-    else:
-        return
+    config.read(
+        [
+            '/etc/bugzilla.cfg',
+            os.path.expanduser('~/bugzilla.cfg'),
+            'bugzilla.cfg',
+        ]
+    )
 
-    group.addoption('--bugzilla-url',
-                    action='store',
-                    dest='bugzilla_url',
-                    default=config.get('DEFAULT', 'bugzilla_url'),
-                    metavar='url',
-                    help='Overrides the xmlrpc url for bugzilla found in'
-                    'bugzilla.cfg.')
-    group.addoption('--bugzilla-user',
-                    action='store',
-                    dest='bugzilla_username',
-                    default=config.get('DEFAULT', 'bugzilla_username'),
-                    metavar='username',
-                    help='Overrides the bugzilla username in bugzilla.cfg.')
-    group.addoption('--bugzilla-password',
-                    action='store',
-                    dest='bugzilla_password',
-                    default=config.get('DEFAULT', 'bugzilla_password'),
-                    metavar='password',
-                    help='Overrides the bugzilla password in bugzilla.cfg.')
-    group.addoption('--bugzilla-project-version',
-                    action='store',
-                    dest='bugzilla_version',
-                    default=config.get('DEFAULT', 'bugzilla_version'),
-                    metavar='version',
-                    help='Overrides the project version in bugzilla.cfg.')
-    group.addoption('--bugzilla-looseversion-fields',
-                    action='store',
-                    dest='bugzilla_loose',
-                    default=config.get('DEFAULT', 'bugzilla_loose'),
-                    metavar='loose',
-                    help='Overrides the project loose in bugzilla.cfg.')
+    group = parser.getgroup('Bugzilla integration')
+    group.addoption(
+        '--bugzilla',
+        action='store_true',
+        default=False,
+        dest='bugzilla',
+        help='Enable Bugzilla support.',
+    )
+    group.addoption(
+        '--bugzilla-url',
+        action='store',
+        dest='bugzilla_url',
+        default=get_value_from_config_parser(config, 'bugzilla_url'),
+        metavar='url',
+        help='Overrides the xmlrpc url for bugzilla found in bugzilla.cfg.',
+    )
+    group.addoption(
+        '--bugzilla-user',
+        action='store',
+        dest='bugzilla_username',
+        default=get_value_from_config_parser(config, 'bugzilla_username', ''),
+        metavar='username',
+        help='Overrides the bugzilla username in bugzilla.cfg.',
+    )
+    group.addoption(
+        '--bugzilla-password',
+        action='store',
+        dest='bugzilla_password',
+        default=get_value_from_config_parser(config, 'bugzilla_password', ''),
+        metavar='password',
+        help='Overrides the bugzilla password in bugzilla.cfg.',
+    )
+    group.addoption(
+        '--bugzilla-project-version',
+        action='store',
+        dest='bugzilla_version',
+        default=get_value_from_config_parser(config, 'bugzilla_version'),
+        metavar='version',
+        help='Overrides the project version in bugzilla.cfg.',
+    )
+    group.addoption(
+        '--bugzilla-looseversion-fields',
+        action='store',
+        dest='bugzilla_loose',
+        default=get_value_from_config_parser(
+            config, 'bugzilla_loose', _default_looseversion_fields,
+        ),
+        metavar='loose',
+        help='Overrides the project loose in bugzilla.cfg.',
+    )
 
 
 def pytest_configure(config):
@@ -293,22 +322,14 @@ def pytest_configure(config):
         "markers",
         "bugzilla(*bug_ids, **guards): Bugzilla integration",
     )
-    if config.getvalue("bugzilla") and all(
-        [
-            config.getvalue('bugzilla_url'),
-            config.getvalue('bugzilla_username'),
-            config.getvalue('bugzilla_password'),
-            config.getvalue('bugzilla_version'),
-            config.getvalue('bugzilla_loose'),
-        ]
-    ):
+    if config.getvalue("bugzilla") and config.getvalue('bugzilla_url'):
         url = config.getvalue('bugzilla_url')
         user = config.getvalue('bugzilla_username')
         password = config.getvalue('bugzilla_password')
         version = config.getvalue('bugzilla_version')
         loose = [
             x.strip()
-            for x in config.getvalue('bugzilla_loose').strip().split(",")
+            for x in config.getvalue('bugzilla_loose').strip().split(",", 1)
         ]
         if len(loose) == 1 and len(loose[0]) == 0:
             loose = []
