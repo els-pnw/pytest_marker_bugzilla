@@ -149,7 +149,9 @@ class BugzillaHooks(object):
                 will_skip = False
             else:
                 skippers.append(bug)
-        url = "https://bugzilla.redhat.com/show_bug.cgi?id="
+        url = "{0}?id=".format(
+            self.bugzilla.url.replace("xmlrpc.cgi", "show_bug.cgi"),
+        )
 
         if will_skip:
             pytest.skip(
