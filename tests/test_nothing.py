@@ -33,18 +33,8 @@ class TestNothing(object):
     def setup_class(cls):
         # Create config file
         config = "bugzilla.cfg"
-        if not os.path.exists(config):
-            with open(config, "w") as fh:
-                fh.write(
-                    "\n".join(
-                        [
-                            "[DEFAULT]",
-                            "bugzilla_url = "
-                            "https://bugzilla.redhat.com/xmlrpc.cgi",
 
-                        ]
-                    )
-                )
+        assert os.path.exists(config), "please create bugzilla.cfg"
 
         # Create test
         with open(cls.test_file + ".in") as fhs:
