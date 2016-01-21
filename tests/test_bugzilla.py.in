@@ -9,15 +9,15 @@ import pytest
 @pytest.mark.nondestructive
 class TestNothing(object):
 
-    @pytest.mark.bugzilla('1')
+    @pytest.mark.bugzilla({'1': {}})
     def test_new_bz(self):
         assert(os.path.exists('/etcccc'))
 
-    @pytest.mark.bugzilla('2')
+    @pytest.mark.bugzilla({'2': {}})
     def test_closed_bz(self):
         assert(os.path.exists('/etc'))
 
-    @pytest.mark.bugzilla('2')
+    @pytest.mark.bugzilla({'2': {}})
     def test_closed_bz_with_failure(self):
         assert(os.path.exists('/etcccc'))
 
@@ -26,3 +26,15 @@ class TestNothing(object):
 
     def test_fail_without_bugzilla(self):
         assert(os.path.exists('/etc123'))
+
+    @pytest.mark.bugzilla({'3': {}})
+    def test_verified_bz(self):
+        assert(os.path.exists('/etc'))
+
+    @pytest.mark.bugzilla({'4': {}})
+    def test_closed_bz_2(self):
+        assert(os.path.exists('/etc'))
+
+    @pytest.mark.bugzilla({'5': {}})
+    def test_modified_bz(self):
+        assert(os.path.exists('/etc'))

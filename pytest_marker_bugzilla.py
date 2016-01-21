@@ -5,6 +5,7 @@ import inspect
 import os
 import pytest
 import re
+import logging
 from distutils.version import LooseVersion
 from functools import wraps
 """This plugin integrates pytest with bugzilla
@@ -56,6 +57,7 @@ Authors:
     Eric L. Sammons
     Milan Falešník
 """
+logger = logging.getLogger(__name__)
 _bugs_pool = {}  # Cache bugs for greater speed
 _default_looseversion_fields = "fixed_in,target_release"
 
@@ -149,45 +151,117 @@ class BugzillaHooks(object):
         """For test purposes only"""
         _bugs_pool[bug_obj.id] = BugWrapper(bug_obj, self.loose)
 
+    def _should_skip_due_to_api(self, item, engines):
+
+        if not engines:
+            return True
+
+        return item.parent.obj.api in engines
+
+    def _should_skip_due_to_storage(self, item, storages):
+
+        if not storages:
+            return True
+
+        return item.parent.obj.storage in storages
+
+    def _should_skip_due_to_ppc(self, item, is_ppc):
+        return is_ppc is None or is_ppc is True
+
+    def _should_skip(self, item, bz_mark):
+
+        is_ppc_affected = self._should_skip_due_to_ppc(
+                item, bz_mark.get('ppc')
+        )
+
+        is_api_affected = self._should_skip_due_to_api(
+            item, bz_mark.get('engine')
+        )
+
+        is_storage_affected = self._should_skip_due_to_storage(
+            item, bz_mark.get('storage')
+        )
+
+        if is_api_affected and is_storage_affected and is_ppc_affected:
+            return True
+
+        return False
+
     def pytest_runtest_setup(self, item):
         """
         Run test setup.
         :param item: test being run.
         """
+
         if "bugzilla" not in item.keywords:
             return
-        bugs = item.funcargs["bugs"]
-        will_skip = True
+
+        bugs_in_cache = item.funcargs["bugs_in_cache"]
+        bugzilla_marker_related_to_case = item.get_marker('bugzilla')
+        bugs_related_to_case = bugzilla_marker_related_to_case.args[0]
+        bugs_objs = []
+
+        for bug_id in bugs_related_to_case.keys():
+            bugs_objs.append(bugs_in_cache[bug_id])
+
         skippers = []
-        for bug in bugs.bugs_gen:
-            if bug.status not in ["NEW", "ASSIGNED", "ON_DEV"]:
-                will_skip = False
-            else:
-                skippers.append(bug)
+
+        for bz in bugs_objs:
+            for bug in bz.bugs_gen:
+                if bug.status == "CLOSED":
+                    logger.info(
+                        "Id:{0}; Status:{1}; Resolution:{2}; [RUNNING]".format(
+                            bug.id, bug.status, bug.resolution
+                        )
+                    )
+                elif bug.status in ["VERIFIED", "ON_QA"]:
+                    logger.info(
+                        "Id: {0}; Status: {1}; [RUNNING]".format(
+                            bug.id, bug.status
+                        )
+                    )
+                elif self._should_skip(
+                        item, bugs_related_to_case[str(bug.id)]
+                ):
+                    skippers.append(bug)
+                    logger.info(
+                        "Id: {0}; Status: {1}; [SKIPPING]".format(
+                            bug.id, bug.status
+                        )
+                    )
+
         url = "{0}?id=".format(
             self.bugzilla.url.replace("xmlrpc.cgi", "show_bug.cgi"),
         )
 
-        if will_skip:
-            pytest.skip(
-                "Skipping this test because all of these assigned bugs:\n"
-                "{0}".format(
-                    "\n".join(
-                        [
-                            "{0} {1}{2}".format(bug.status, url, bug.id)
-                            for bug in skippers
-                        ]
-                    )
+        if skippers:
+            skipping_summary = (
+                "Skipping due to: "
+                "\n".join(
+                    [
+                        "Bug summary: {0} Status: {1} URL: {2}{3}".format(
+                            bug.summary, bug.status, url, bug.id
+                        )
+                        for bug in skippers
+                    ]
                 )
             )
+
+            logger.info(
+                "Test case {0} will be skipped due to:\n {1}".format(
+                    item.name, skipping_summary
+                )
+            )
+
+            pytest.skip(skipping_summary)
 
         marker = item.get_marker('bugzilla')
         xfail = kwargify(marker.kwargs.get("xfail_when", lambda: False))
         skip = kwargify(marker.kwargs.get("skip_when", lambda: False))
         if skip:
-            self.evaluate_skip(skip, bugs)
+            self.evaluate_skip(skip, bugs_in_cache)
         if xfail:
-            xfailed = self.evaluate_xfail(xfail, bugs)
+            xfailed = self.evaluate_xfail(xfail, bugs_in_cache)
             if xfailed:
                 item.add_marker(
                     pytest.mark.xfail(
@@ -204,25 +278,33 @@ class BugzillaHooks(object):
                 )
 
     def evaluate_skip(self, skip, bugs):
-        for bug in bugs.bugs_gen:
-            context = {"bug": bug}
-            if self.version:
-                context["version"] = LooseVersion(self.version)
-            if skip(**context):
-                pytest.skip(
-                    "Skipped due to a given condition: {0}".format(
-                        inspect.getsource(skip)
+        bugs_obj = bugs.values()
+
+        for bug_obj in bugs_obj:
+            for bz in bug_obj.bugs_gen:
+                context = {"bug": bz}
+                if self.version:
+                    context["version"] = LooseVersion(self.version)
+                if skip(**context):
+                    pytest.skip(
+                        "Skipped due to a given condition: {0}".format(
+                            inspect.getsource(skip)
+                        )
                     )
-                )
 
     def evaluate_xfail(self, xfail, bugs):
         results = []
-        for bug in bugs.bugs_gen:
-            context = {"bug": bug}
-            if self.version:
-                context["version"] = LooseVersion(self.version)
-            if xfail(**context):
-                results.append(bug)
+
+        # for bug in bugs.bugs_gen:
+        bugs_obj = bugs.values()
+
+        for bug_obj in bugs_obj:
+            for bz in bug_obj.bugs_gen:
+                context = {"bug": bz}
+                if self.version:
+                    context["version"] = LooseVersion(self.version)
+                if xfail(**context):
+                    results.append(bz)
         return results
 
     def pytest_collection_modifyitems(self, session, config, items):
@@ -233,12 +315,17 @@ class BugzillaHooks(object):
             filter(lambda i: i.get_marker("bugzilla") is not None, items)
         ):
             marker = item.get_marker('bugzilla')
-            # (O_O) for caching
-            bugs = tuple(sorted(set(map(int, marker.args))))
-            if bugs not in cache:
-                reporter.write(".")
-                cache[bugs] = BugzillaBugs(self.bugzilla, self.loose, *bugs)
-            item.funcargs["bugs"] = cache[bugs]
+            bugs = marker.args[0]
+            bugs_ids = bugs.keys()
+
+            for bz_id in bugs_ids:
+                if bz_id not in cache:
+                    reporter.write(".")
+                    cache[bz_id] = BugzillaBugs(
+                        self.bugzilla, self.loose, bz_id
+                    )
+
+            item.funcargs["bugs_in_cache"] = cache
         reporter.write(
             "\nChecking for bugzilla-related tests has finished\n", bold=True,
         )
@@ -323,6 +410,7 @@ def pytest_configure(config):
 
     :param config: configuration object
     """
+
     config.addinivalue_line(
         "markers",
         "bugzilla(*bug_ids, **guards): Bugzilla integration",
