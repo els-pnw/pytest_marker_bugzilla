@@ -15,6 +15,8 @@ FAKE_BUGS = {
         "fixed_in": None,
         "status": 'NEW',
         "target_release": None,
+        "resolution": 'foo 1',
+        "summary": 'ONE',
     },
     "2": {
         "id": 2,
@@ -22,6 +24,8 @@ FAKE_BUGS = {
         "fixed_in": None,
         "status": 'CLOSED',
         "target_release": None,
+        "resolution": 'foo 2',
+        "summary": 'TWO',
     },
     "3": {
         "id": 3,
@@ -29,6 +33,8 @@ FAKE_BUGS = {
         "fixed_in": 2.0,
         "status": 'POST',
         "target_release": None,
+        "resolution": 'foo 3',
+        "summary": 'THREE',
     },
     "4": {
         "id": 4,
@@ -36,6 +42,8 @@ FAKE_BUGS = {
         "fixed_in": None,
         "status": 'NEW',
         "target_release": None,
+        "resolution": 'foo 4',
+        "summary": 'FOUR',
     },
 }
 
@@ -91,7 +99,7 @@ def test_new_bug_failing(testdir):
         import os
         import pytest
 
-        @pytest.mark.bugzilla('1')
+        @pytest.mark.bugzilla({'1': {}})
         def test_new_bug():
             assert(os.path.exists('/etcccc'))
     """)
@@ -105,7 +113,7 @@ def test_new_int_bug_failing(testdir):
         import os
         import pytest
 
-        @pytest.mark.bugzilla(1)
+        @pytest.mark.bugzilla({'1': {}})
         def test_new_bug():
             assert(os.path.exists('/etcccc'))
     """)
@@ -119,7 +127,7 @@ def test_new_bug_passing(testdir):
         import os
         import pytest
 
-        @pytest.mark.bugzilla('1')
+        @pytest.mark.bugzilla({'1': {}})
         def test_new_bug():
             assert True
     """)
@@ -133,7 +141,7 @@ def test_closed_bug(testdir):
         import os
         import pytest
 
-        @pytest.mark.bugzilla('2')
+        @pytest.mark.bugzilla({'2': {}})
         def test_closed_bug():
             assert(os.path.exists('/etc'))
     """)
@@ -147,7 +155,7 @@ def test_closed_bug_with_failure(testdir):
         import os
         import pytest
 
-        @pytest.mark.bugzilla('2')
+        @pytest.mark.bugzilla({'2': {}})
         def test_closed_bug_with_failure():
             assert(os.path.exists('/etcccc'))
     """)
@@ -161,15 +169,15 @@ def test_more_cases(testdir):
         import os
         import pytest
 
-        @pytest.mark.bugzilla('1')
+        @pytest.mark.bugzilla({'1': {}})
         def test_new_bug():
             assert(os.path.exists('/etcccc'))
 
-        @pytest.mark.bugzilla('2')
+        @pytest.mark.bugzilla({'2': {}})
         def test_closed_bug():
             assert(os.path.exists('/etc'))
 
-        @pytest.mark.bugzilla('2')
+        @pytest.mark.bugzilla({'2': {}})
         def test_closed_bug_with_failure():
             assert(os.path.exists('/etcccc'))
     """)
@@ -177,27 +185,27 @@ def test_more_cases(testdir):
     result.assert_outcomes(1, 1, 1)
 
 
-def test_multiple_bugs_failure(testdir):
+def test_multiple_bugs_skip_1(testdir):
     testdir.makeconftest(CONFTEST)
     testdir.makepyfile("""
         import os
         import pytest
 
-        @pytest.mark.bugzilla('1', '2', '4')
+        @pytest.mark.bugzilla({'1': {}}, {'4': {}}, {'2': {}})
         def test_new_bug():
             assert(os.path.exists('/etcccc'))
     """)
     result = testdir.runpytest(*BUGZILLA_ARGS)
-    result.assert_outcomes(0, 0, 1)
+    result.assert_outcomes(0, 1, 0)
 
 
-def test_multiple_bugs_skip(testdir):
+def test_multiple_bugs_skip_2(testdir):
     testdir.makeconftest(CONFTEST)
     testdir.makepyfile("""
         import os
         import pytest
 
-        @pytest.mark.bugzilla('1', '4')
+        @pytest.mark.bugzilla({'1': {}}, {'4': {}})
         def test_new_bug():
             assert(os.path.exists('/etcccc'))
     """)
@@ -211,7 +219,10 @@ def test_skip_when_feature(testdir):
         import os
         import pytest
 
-        @pytest.mark.bugzilla('3', skip_when=lambda bug: bug.status == "POST")
+        @pytest.mark.bugzilla(
+            {'3': {}},
+            skip_when=lambda bug: bug.status == "POST"
+        )
         def test_new_bug():
             assert(os.path.exists('/etcccc'))
     """)
@@ -226,7 +237,7 @@ def test_xfail_when_feature(testdir):
         import pytest
 
         @pytest.mark.bugzilla(
-            '3',
+            {'3': {}},
             xfail_when=lambda bug, version: bug.fixed_in > version
         )
         def test_new_bug():
@@ -251,7 +262,7 @@ def test_config_file(testdir):
         import os
         import pytest
 
-        @pytest.mark.bugzilla('1')
+        @pytest.mark.bugzilla({'1':{}})
         def test_new_bug():
             assert True
     """)
@@ -265,18 +276,108 @@ def test_more_cases_with_xdist(testdir):
         import os
         import pytest
 
-        @pytest.mark.bugzilla('1')
+        @pytest.mark.bugzilla({'1': {}})
         def test_new_bug():
             assert(os.path.exists('/etcccc'))
 
-        @pytest.mark.bugzilla('2')
+        @pytest.mark.bugzilla({'2': {}})
         def test_closed_bug():
             assert(os.path.exists('/etc'))
 
-        @pytest.mark.bugzilla('2')
+        @pytest.mark.bugzilla({'2': {}})
         def test_closed_bug_with_failure():
             assert(os.path.exists('/etcccc'))
     """)
     args = BUGZILLA_ARGS + ('-n', '2')
     result = testdir.runpytest(*args)
     result.assert_outcomes(1, 1, 1)
+
+
+def test_skip_because_of_storage(testdir):
+    testdir.makeconftest(CONFTEST)
+    testdir.makepyfile("""
+        import os
+        import pytest
+
+        class TestClass():
+            storage = 'nfs'
+
+        class TestStorageSkip(TestClass):
+
+            @pytest.mark.bugzilla({'1': {'storage': 'nfs'}})
+            def test_new_bug(self):
+                assert True
+    """)
+    result = testdir.runpytest(*BUGZILLA_ARGS)
+    result.assert_outcomes(0, 1, 0)
+
+
+def test_not_skip_because_of_storage(testdir):
+    testdir.makeconftest(CONFTEST)
+    testdir.makepyfile("""
+        import os
+        import pytest
+
+        class TestClass():
+            storage = 'nfs'
+
+        class TestStorageNotSkip(TestClass):
+
+            @pytest.mark.bugzilla({'1': {'storage': 'iscsi'}})
+            def test_new_bug_but_different_storage(self):
+                assert True
+    """)
+    result = testdir.runpytest(*BUGZILLA_ARGS)
+    result.assert_outcomes(1, 0, 0)
+
+
+def test_skip_because_of_api(testdir):
+    testdir.makeconftest(CONFTEST)
+    testdir.makepyfile("""
+        import os
+        import pytest
+
+        class TestClass():
+            api = 'rest'
+
+        class TestApiSkip(TestClass):
+
+            @pytest.mark.bugzilla({'1': {'engine': 'rest'}})
+            def test_new_bug(self):
+                assert True
+    """)
+    result = testdir.runpytest(*BUGZILLA_ARGS)
+    result.assert_outcomes(0, 1, 0)
+
+
+def test_not_skip_because_of_api(testdir):
+    testdir.makeconftest(CONFTEST)
+    testdir.makepyfile("""
+        import os
+        import pytest
+
+        class TestClass():
+            api = 'rest'
+
+        class TestApiNotSkip(TestClass):
+
+            @pytest.mark.bugzilla({'1': {'engine': 'sdk'}})
+            def test_new_bug_but_different_api(self):
+                assert True
+    """)
+    result = testdir.runpytest(*BUGZILLA_ARGS)
+    result.assert_outcomes(1, 0, 0)
+
+
+def test_skip_because_of_ppc(testdir):
+    testdir.makeconftest(CONFTEST)
+    testdir.makepyfile("""
+        import os
+        import pytest
+
+        @pytest.mark.bugzilla({'1': {'ppc': True}})
+        def test_new_bug_but_ppc(self):
+            assert True
+    """)
+    result = testdir.runpytest(*BUGZILLA_ARGS)
+    result.assert_outcomes(0, 1, 0)
