@@ -4,18 +4,44 @@ import pytest
 
 FAKE_BUGS = {
     "1": {
-        "id": 1,
+        "id": '1',
         "version": None,
         "fixed_in": None,
         "status": 'NEW',
         "target_release": None,
+        "resolution": 'foo',
     },
     "2": {
-        "id": 2,
+        "id": '2',
+        "version": None,
+        "fixed_in": None,
+        "status": 'ON_QA',
+        "target_release": None,
+        "resolution": 'foo',
+    },
+    "3": {
+        "id": '3',
+        "version": None,
+        "fixed_in": None,
+        "status": 'VERIFIED',
+        "target_release": None,
+        "resolution": 'foo',
+    },
+    "4": {
+        "id": '4',
         "version": None,
         "fixed_in": None,
         "status": 'CLOSED',
         "target_release": None,
+        "resolution": 'DUPLICATE',
+    },
+    "5": {
+        "id": '5',
+        "version": None,
+        "fixed_in": None,
+        "status": 'MODIFIED',
+        "target_release": None,
+        "resolution": 'foo',
     },
 }
 
