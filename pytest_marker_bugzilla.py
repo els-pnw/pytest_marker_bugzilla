@@ -5,6 +5,7 @@ import inspect
 import os
 import pytest
 import re
+import logging
 from distutils.version import LooseVersion
 from functools import wraps
 """This plugin integrates pytest with bugzilla
@@ -56,7 +57,14 @@ Authors:
     Eric L. Sammons
     Milan Falešník
 """
+logger = logging.getLogger(__name__)
 _bugs_pool = {}  # Cache bugs for greater speed
+_default_looseversion_fields = "fixed_in,target_release"
+
+
+def get_value_from_config_parser(parser, option, default=None):
+    """Wrapper around ConfigParser to do not fail on missing options"""
+    return parser.defaults().get(option, default)
 
 
 def loose_func_gen(attr):
@@ -108,23 +116,23 @@ class BugzillaBugs(object):
     @property
     def bugs_gen(self):
         for bug_id in self.bug_ids:
-            bug = BugWrapper(self.bugzilla.getbug(bug_id), self.loose)
             if bug_id not in _bugs_pool:
+                bug = BugWrapper(self.bugzilla.getbug(bug_id), self.loose)
                 _bugs_pool[bug_id] = bug
             yield _bugs_pool[bug_id]
 
     def bug(self, id):
         """Returns Bugzilla's Bug object for given ID"""
         id = int(id)
+        if id not in self.bug_ids:
+            raise ValueError("Could not find bug with id {0}".format(id))
+
         if id in _bugs_pool:
             return _bugs_pool[id]
-        for bug_id in self.bug_ids:
-            if id == bug_id:
-                bug = BugWrapper(self.bugzilla.getbug(bug_id), self.loose)
-                _bugs_pool[bug_id] = bug
-                return bug
-        else:
-            raise ValueError("Could not find bug with id {0}".format(id))
+
+        bug = BugWrapper(self.bugzilla.getbug(id), self.loose)
+        _bugs_pool[id] = bug
+        return bug
 
 
 class BugzillaHooks(object):
@@ -134,45 +142,124 @@ class BugzillaHooks(object):
         self.version = version
         self.loose = loose
 
+    def add_bug_to_cache(self, bug_obj):
+        """For test purposes only"""
+        _bugs_pool[bug_obj.id] = BugWrapper(bug_obj, self.loose)
+
+    def _should_skip_due_to_api(self, item, engines):
+        if engines is None:
+            return True
+
+        if len(engines) == 0:
+            return True
+
+        if item.parent.obj.api in engines:
+            return True
+
+        return False
+
+    def _should_skip_due_to_storage(self, item, storages):
+        if storages is None:
+            return True
+
+        if len(storages) == 0:
+            return True
+
+        if item.parent.obj.storage in storages:
+            return True
+
+        return False
+
+    def _should_skip(self, item, bz_mark):
+
+        is_api_affected = self._should_skip_due_to_api(
+            item, bz_mark.get('engine')
+        )
+
+        is_storage_affected = self._should_skip_due_to_storage(
+            item, bz_mark.get('storage')
+        )
+
+        if is_api_affected and is_storage_affected:
+            return True
+
+        return False
+
     def pytest_runtest_setup(self, item):
         """
         Run test setup.
         :param item: test being run.
         """
+
         if "bugzilla" not in item.keywords:
             return
-        bugs = item.funcargs["bugs"]
-        will_skip = True
+
+        bugs_in_cache = item.funcargs["bugs_in_cache"]
+        bugzilla_marker_related_to_case = item.get_marker('bugzilla')
+        bugs_related_to_case = bugzilla_marker_related_to_case.args[0]
+        bugs_objs = []
+
+        for bug_id in bugs_related_to_case.keys():
+            bugs_objs.append(bugs_in_cache[bug_id])
+
         skippers = []
-        for bug in bugs.bugs_gen:
-            if bug.status not in ["NEW", "ASSIGNED", "ON_DEV"]:
-                will_skip = False
-            else:
-                skippers.append(bug)
+
+        for bz in bugs_objs:
+            for bug in bz.bugs_gen:
+                if bug.status == "CLOSED":
+                    logger.info(
+                        "Id:{0}; Status:{1}; Resolution:{2}; [RUNNING]".format(
+                            bug.id, bug.status, bug.resolution
+                        )
+                    )
+                elif bug.status in ["VERIFIED", "ON_QA"]:
+                    logger.info(
+                        "Id: {0}; Status: {1}; [RUNNING]".format(
+                            bug.id, bug.status
+                        )
+                    )
+                elif self._should_skip(
+                        item, bugs_related_to_case[str(bug.id)]
+                ):
+                    skippers.append(bug)
+                    logger.info(
+                        "Id: {0}; Status: {1}; [SKIPPING]".format(
+                            bug.id, bug.status
+                        )
+                    )
+
         url = "{0}?id=".format(
             self.bugzilla.url.replace("xmlrpc.cgi", "show_bug.cgi"),
         )
 
-        if will_skip:
-            pytest.skip(
-                "Skipping this test because all of these assigned bugs:\n"
-                "{0}".format(
-                    "\n".join(
-                        [
-                            "{0} {1}{2}".format(bug.status, url, bug.id)
-                            for bug in skippers
-                        ]
-                    )
+        if len(skippers) > 0:
+            skipping_summary = (
+                "Skipping due to: "
+                "\n".join(
+                    [
+                        "Status: {0} URL: {1}{2}".format(
+                            bug.status, url, bug.id
+                        )
+                        for bug in skippers
+                    ]
                 )
             )
+
+            logger.info(
+                "Test case {0} will be skipped due to:\n {1}".format(
+                    item.name, skipping_summary
+                )
+            )
+
+            pytest.skip(skipping_summary)
 
         marker = item.get_marker('bugzilla')
         xfail = kwargify(marker.kwargs.get("xfail_when", lambda: False))
         skip = kwargify(marker.kwargs.get("skip_when", lambda: False))
         if skip:
-            self.evaluate_skip(skip, bugs)
+            self.evaluate_skip(skip, bugs_in_cache)
         if xfail:
-            xfailed = self.evaluate_xfail(xfail, bugs)
+            xfailed = self.evaluate_xfail(xfail, bugs_in_cache)
             if xfailed:
                 item.add_marker(
                     pytest.mark.xfail(
@@ -189,17 +276,33 @@ class BugzillaHooks(object):
                 )
 
     def evaluate_skip(self, skip, bugs):
-        for bug in bugs.bugs_gen:
-            context = {"bug": bug, "version": LooseVersion(self.version)}
-            if skip(**context):
-                pytest.skip("Skipped due to a given condition!")
+        bugs_obj = bugs.values()
+
+        for bug_obj in bugs_obj:
+            for bz in bug_obj.bugs_gen:
+                context = {"bug": bz}
+                if self.version:
+                    context["version"] = LooseVersion(self.version)
+                if skip(**context):
+                    pytest.skip(
+                        "Skipped due to a given condition: {0}".format(
+                            inspect.getsource(skip)
+                        )
+                    )
 
     def evaluate_xfail(self, xfail, bugs):
         results = []
-        for bug in bugs.bugs_gen:
-            context = {"bug": bug, "version": LooseVersion(self.version)}
-            if xfail(**context):
-                results.append(bug)
+
+        # for bug in bugs.bugs_gen:
+        bugs_obj = bugs.values()
+
+        for bug_obj in bugs_obj:
+            for bz in bug_obj.bugs_gen:
+                context = {"bug": bz}
+                if self.version:
+                    context["version"] = LooseVersion(self.version)
+                if xfail(**context):
+                    results.append(bz)
         return results
 
     def pytest_collection_modifyitems(self, session, config, items):
@@ -210,12 +313,17 @@ class BugzillaHooks(object):
             filter(lambda i: i.get_marker("bugzilla") is not None, items)
         ):
             marker = item.get_marker('bugzilla')
-            # (O_O) for caching
-            bugs = tuple(sorted(set(map(int, marker.args))))
-            if bugs not in cache:
-                reporter.write(".")
-                cache[bugs] = BugzillaBugs(self.bugzilla, self.loose, *bugs)
-            item.funcargs["bugs"] = cache[bugs]
+            bugs = marker.args[0]
+            bugs_ids = bugs.keys()
+
+            for bz_id in bugs_ids:
+                if bz_id not in cache.keys():
+                    reporter.write(".")
+                    cache[bz_id] = BugzillaBugs(
+                        self.bugzilla, self.loose, bz_id
+                    )
+
+            item.funcargs["bugs_in_cache"] = cache
         reporter.write(
             "\nChecking for bugzilla-related tests has finished\n", bold=True,
         )
@@ -232,50 +340,65 @@ def pytest_addoption(parser):
 
     :param parser: Command line options.
     """
-    group = parser.getgroup('Bugzilla integration')
-    group.addoption('--bugzilla',
-                    action='store_true',
-                    default=False,
-                    dest='bugzilla',
-                    help='Enable Bugzilla support.')
-
     config = ConfigParser.ConfigParser()
-    if os.path.exists('bugzilla.cfg'):
-        config.read('bugzilla.cfg')
-    else:
-        return
+    config.read(
+        [
+            '/etc/bugzilla.cfg',
+            os.path.expanduser('~/bugzilla.cfg'),
+            'bugzilla.cfg',
+        ]
+    )
 
-    group.addoption('--bugzilla-url',
-                    action='store',
-                    dest='bugzilla_url',
-                    default=config.get('DEFAULT', 'bugzilla_url'),
-                    metavar='url',
-                    help='Overrides the xmlrpc url for bugzilla found in'
-                    'bugzilla.cfg.')
-    group.addoption('--bugzilla-user',
-                    action='store',
-                    dest='bugzilla_username',
-                    default=config.get('DEFAULT', 'bugzilla_username'),
-                    metavar='username',
-                    help='Overrides the bugzilla username in bugzilla.cfg.')
-    group.addoption('--bugzilla-password',
-                    action='store',
-                    dest='bugzilla_password',
-                    default=config.get('DEFAULT', 'bugzilla_password'),
-                    metavar='password',
-                    help='Overrides the bugzilla password in bugzilla.cfg.')
-    group.addoption('--bugzilla-project-version',
-                    action='store',
-                    dest='bugzilla_version',
-                    default=config.get('DEFAULT', 'bugzilla_version'),
-                    metavar='version',
-                    help='Overrides the project version in bugzilla.cfg.')
-    group.addoption('--bugzilla-looseversion-fields',
-                    action='store',
-                    dest='bugzilla_loose',
-                    default=config.get('DEFAULT', 'bugzilla_loose'),
-                    metavar='loose',
-                    help='Overrides the project loose in bugzilla.cfg.')
+    group = parser.getgroup('Bugzilla integration')
+    group.addoption(
+        '--bugzilla',
+        action='store_true',
+        default=False,
+        dest='bugzilla',
+        help='Enable Bugzilla support.',
+    )
+    group.addoption(
+        '--bugzilla-url',
+        action='store',
+        dest='bugzilla_url',
+        default=get_value_from_config_parser(config, 'bugzilla_url'),
+        metavar='url',
+        help='Overrides the xmlrpc url for bugzilla found in bugzilla.cfg.',
+    )
+    group.addoption(
+        '--bugzilla-user',
+        action='store',
+        dest='bugzilla_username',
+        default=get_value_from_config_parser(config, 'bugzilla_username', ''),
+        metavar='username',
+        help='Overrides the bugzilla username in bugzilla.cfg.',
+    )
+    group.addoption(
+        '--bugzilla-password',
+        action='store',
+        dest='bugzilla_password',
+        default=get_value_from_config_parser(config, 'bugzilla_password', ''),
+        metavar='password',
+        help='Overrides the bugzilla password in bugzilla.cfg.',
+    )
+    group.addoption(
+        '--bugzilla-project-version',
+        action='store',
+        dest='bugzilla_version',
+        default=get_value_from_config_parser(config, 'bugzilla_version'),
+        metavar='version',
+        help='Overrides the project version in bugzilla.cfg.',
+    )
+    group.addoption(
+        '--bugzilla-looseversion-fields',
+        action='store',
+        dest='bugzilla_loose',
+        default=get_value_from_config_parser(
+            config, 'bugzilla_loose', _default_looseversion_fields,
+        ),
+        metavar='loose',
+        help='Overrides the project loose in bugzilla.cfg.',
+    )
 
 
 def pytest_configure(config):
@@ -285,26 +408,23 @@ def pytest_configure(config):
 
     :param config: configuration object
     """
+    # from art.rhevm_api.tests_lib.low_level import general
+    # system_version = ["%d.%d.%d.%d" % general.getSystemVersion()]
+    # import ipdb;ipdb.set_trace()
+    # print system_version
+
     config.addinivalue_line(
         "markers",
         "bugzilla(*bug_ids, **guards): Bugzilla integration",
     )
-    if config.getvalue("bugzilla") and all(
-        [
-            config.getvalue('bugzilla_url'),
-            config.getvalue('bugzilla_username'),
-            config.getvalue('bugzilla_password'),
-            config.getvalue('bugzilla_version'),
-            config.getvalue('bugzilla_loose'),
-        ]
-    ):
+    if config.getvalue("bugzilla") and config.getvalue('bugzilla_url'):
         url = config.getvalue('bugzilla_url')
         user = config.getvalue('bugzilla_username')
         password = config.getvalue('bugzilla_password')
         version = config.getvalue('bugzilla_version')
         loose = [
             x.strip()
-            for x in config.getvalue('bugzilla_loose').strip().split(",")
+            for x in config.getvalue('bugzilla_loose').strip().split(",", 1)
         ]
         if len(loose) == 1 and len(loose[0]) == 0:
             loose = []
