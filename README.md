@@ -1,3 +1,5 @@
+[![Build Status][travisimg]][travis]
+
 # Intro
 [PyTest][pytest] plugin for bugzilla integration. This plugin currently
 assumes the following workflow:
@@ -54,3 +56,5 @@ Please also try to cover new features by writing new tests.
 
 [pytest]: http://pytest.org/latest/
 [githubissues]: https://github.com/eanxgeek/pytest_marker_bugzilla/issues
+[travisimg]: https://travis-ci.org/eanxgeek/pytest_marker_bugzilla.svg?branch=master
+[travis]: https://travis-ci.org/eanxgeek/pytest_marker_bugzilla
