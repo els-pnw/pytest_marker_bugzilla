@@ -108,8 +108,8 @@ class BugzillaBugs(object):
     @property
     def bugs_gen(self):
         for bug_id in self.bug_ids:
-            bug = BugWrapper(self.bugzilla.getbug(bug_id), self.loose)
             if bug_id not in _bugs_pool:
+                bug = BugWrapper(self.bugzilla.getbug(bug_id), self.loose)
                 _bugs_pool[bug_id] = bug
             yield _bugs_pool[bug_id]
 
@@ -133,6 +133,10 @@ class BugzillaHooks(object):
         self.bugzilla = bugzilla
         self.version = version
         self.loose = loose
+
+    def add_bug_to_cache(self, bug_obj):
+        """For test purposes only"""
+        _bugs_pool[bug_obj.id] = BugWrapper(bug_obj, self.loose)
 
     def pytest_runtest_setup(self, item):
         """
