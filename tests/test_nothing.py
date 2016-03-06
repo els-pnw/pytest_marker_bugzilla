@@ -33,17 +33,8 @@ class TestNothing(object):
     def setup_class(cls):
         # Create config file
         config = "bugzilla.cfg"
-        if not os.path.exists(config):
-            with open(config, "w") as fh:
-                fh.write(
-                    "\n".join(
-                        [
-                            "[DEFAULT]",
-                            "bugzilla_url = "
-                            "https://bugzilla.redhat.com/xmlrpc.cgi",
-                        ]
-                    )
-                )
+
+        assert os.path.exists(config), "please create bugzilla.cfg"
 
         # Create test
         with open(cls.test_file + ".in") as fhs:
@@ -112,3 +103,21 @@ class TestNothing(object):
         No decorator, failing test-case, it should fail.
         """
         self._assert_result('F', 'test_fail_without_bugzilla')
+
+    def test_verified_bz(self):
+        """
+        verified bug, passing test-case, it should pass.
+        """
+        self._assert_result('.', 'test_verified_bz')
+
+    def test_closed_bz_2(self):
+        """
+        closed bug, passing test-case, it should pass.
+        """
+        self._assert_result('.', 'test_closed_bz_2')
+
+    def test_modified_bz(self):
+        """
+        modified bug, test-case should skip.
+        """
+        self._assert_result('s', 'test_modified_bz')
