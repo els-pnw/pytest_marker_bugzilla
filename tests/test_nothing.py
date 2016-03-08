@@ -103,21 +103,3 @@ class TestNothing(object):
         No decorator, failing test-case, it should fail.
         """
         self._assert_result('F', 'test_fail_without_bugzilla')
-
-    def test_verified_bz(self):
-        """
-        verified bug, passing test-case, it should pass.
-        """
-        self._assert_result('.', 'test_verified_bz')
-
-    def test_closed_bz_2(self):
-        """
-        closed bug, passing test-case, it should pass.
-        """
-        self._assert_result('.', 'test_closed_bz_2')
-
-    def test_modified_bz(self):
-        """
-        modified bug, test-case should skip.
-        """
-        self._assert_result('s', 'test_modified_bz')
