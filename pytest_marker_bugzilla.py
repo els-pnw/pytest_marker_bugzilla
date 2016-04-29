@@ -227,7 +227,9 @@ class BugzillaHooks(object):
 
     def pytest_collection_modifyitems(self, session, config, items):
         reporter = config.pluginmanager.getplugin("terminalreporter")
-        reporter.write("Checking for bugzilla-related tests\n", bold=True)
+        # When run as xdist slave you don't have access to reporter
+        if reporter:
+            reporter.write("Checking for bugzilla-related tests\n", bold=True)
         cache = {}
         for i, item in enumerate(
             filter(lambda i: i.get_marker("bugzilla") is not None, items)
@@ -236,15 +238,18 @@ class BugzillaHooks(object):
             # (O_O) for caching
             bugs = tuple(sorted(set(map(int, marker.args))))
             if bugs not in cache:
-                reporter.write(".")
+                if reporter:
+                    reporter.write(".")
                 cache[bugs] = BugzillaBugs(self.bugzilla, self.loose, *bugs)
             item.funcargs["bugs"] = cache[bugs]
-        reporter.write(
-            "\nChecking for bugzilla-related tests has finished\n", bold=True,
-        )
-        reporter.write(
-            "{0} bug marker sets found.\n".format(len(cache)), bold=True,
-        )
+        if reporter:
+            reporter.write(
+                "\nChecking for bugzilla-related tests has finished\n",
+                bold=True,
+            )
+            reporter.write(
+                "{0} bug marker sets found.\n".format(len(cache)), bold=True,
+            )
 
 
 def pytest_addoption(parser):
