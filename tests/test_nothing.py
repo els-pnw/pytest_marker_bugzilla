@@ -30,6 +30,13 @@ class TestNothing(object):
     results = None
 
     @classmethod
+    def compose_cmd(cls):
+        return [
+            'py.test', '--bugzilla', '--result-log=%s' % cls.result_file,
+            cls.test_file, '-s',
+        ]
+
+    @classmethod
     def setup_class(cls):
         # Create config file
         config = "bugzilla.cfg"
@@ -50,20 +57,21 @@ class TestNothing(object):
             with open(cls.test_file, 'w') as fht:
                 fht.write(fhs.read())
 
+        # Remove test results
+        if os.path.exists(cls.result_file):
+            os.unlink(cls.result_file)
+
         # Run test runner with plugin enabled
-        cmd = [
-            'py.test', '--bugzilla', '--result-log=%s' % cls.result_file,
-            cls.test_file,
-        ]
         env = os.environ.copy()
         env['PYTHONPATH'] = ":".join(sys.path)
         p = subprocess.Popen(
-            subprocess.list2cmdline(cmd),
+            subprocess.list2cmdline(cls.compose_cmd()),
             shell=True,
             env=env,
         )
         p.communicate()
         assert os.path.exists(cls.result_file)
+        assert p.returncode in (0, 1), "pytest failed to run"
 
         # Read results of tests
         with open(cls.result_file) as fh:
@@ -112,3 +120,13 @@ class TestNothing(object):
         No decorator, failing test-case, it should fail.
         """
         self._assert_result('F', 'test_fail_without_bugzilla')
+
+
+# Run in paraller
+class TestNothingXdist(TestNothing):
+
+    @classmethod
+    def compose_cmd(cls):
+        cmd = super(TestNothingXdist, cls).compose_cmd()
+        cmd.append("-n2")
+        return cmd
