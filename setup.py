@@ -12,7 +12,7 @@ class PyTest(TestCommand):
     def run_tests(self):
         #import here, cause outside the eggs aren't loaded elsewhere
         import pytest
-        print "Running: pytest %s" % self.test_args
+        print("Running: pytest %s" % self.test_args)
         sys.path.insert(0, 'lib')
         pytest.main(self.test_args)
 
@@ -32,7 +32,7 @@ setup(
         'pytest11': ['pytest_marker_bugzilla = pytest_marker_bugzilla'],
     },
     zip_safe=False,
-    install_requires=['python-bugzilla>=0.6.2', 'pytest>=2.2.4'],
+    install_requires=['python-bugzilla>=0.6.2', 'pytest>=2.2.4', 'six'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
@@ -44,6 +44,9 @@ setup(
         'Topic :: Software Development :: Quality Assurance',
         'Topic :: Utilities',
         'Programming Language :: Python',
+        'Programming Language :: Python :: 2.6',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.4',
     ],
     cmdclass={'test': PyTest,},
 )

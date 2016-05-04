@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import ConfigParser
+import six
 import bugzilla
 import inspect
 import os
@@ -63,7 +63,7 @@ _default_looseversion_fields = "fixed_in,target_release"
 def get_value_from_config_parser(parser, option, default=None):
     """Wrapper around ConfigParser to do not fail on missing options."""
     value = parser.defaults().get(option, default)
-    if value is not None and isinstance(value, basestring):
+    if value is not None and isinstance(value, six.string_types):
         value = value.strip()
         if not value:
             value = default
@@ -260,7 +260,7 @@ def pytest_addoption(parser):
 
     :param parser: Command line options.
     """
-    config = ConfigParser.ConfigParser()
+    config = six.moves.configparser.ConfigParser()
     config.read(
         [
             '/etc/bugzilla.cfg',
