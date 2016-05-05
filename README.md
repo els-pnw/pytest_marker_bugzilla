@@ -54,6 +54,8 @@ When you do changes please make sure that you pass current tests.
 
 Please also try to cover new features by writing new tests.
 
+Enjoy.
+
 [pytest]: http://pytest.org/latest/
 [githubissues]: https://github.com/eanxgeek/pytest_marker_bugzilla/issues
 [travisimg]: https://travis-ci.org/eanxgeek/pytest_marker_bugzilla.svg?branch=master
