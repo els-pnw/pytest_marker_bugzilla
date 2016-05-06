@@ -2,6 +2,9 @@
 *.cfg
 *.swp
 *.egg-info
+.tox
+.coverage
+htmlcov
 build
 dist
 MANIFEST
