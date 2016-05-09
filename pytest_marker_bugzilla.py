@@ -70,13 +70,6 @@ def get_value_from_config_parser(parser, option, default=None):
     return value
 
 
-def loose_func_gen(attr):
-    def version_getter(self):
-        return LooseVersion(re.sub(r"^[^0-9]+", "", getattr(self, attr)))
-    version_getter.__name__ = attr
-    return loose_func_gen
-
-
 def kwargify(f):
     """Convert function having only positional args to a function taking
     dictionary."""
@@ -100,9 +93,15 @@ class BugWrapper(object):
         # We need to generate looseversions for simple comparison of the
         # version params.
         for loose_version_param in loose:
+            param = getattr(bug, loose_version_param, "")
+            if param is None:
+                param = ""
+            if not isinstance(param, six.string_types):
+                param = str(param)
             setattr(
-                self, loose_version_param,
-                property(loose_func_gen(loose_version_param)),
+                self,
+                loose_version_param,
+                LooseVersion(re.sub(r"^[^0-9]+", "", param))
             )
 
     def __getattr__(self, attr):

@@ -1,7 +1,6 @@
 """
 This is test suite for bugzilla plugin.
 """
-import pytest
 
 
 CONFTEST = """
@@ -220,7 +219,6 @@ def test_skip_when_feature(testdir):
     result.assert_outcomes(0, 1, 0)
 
 
-@pytest.mark.xfail
 def test_xfail_when_feature(testdir):
     testdir.makeconftest(CONFTEST)
     testdir.makepyfile("""
