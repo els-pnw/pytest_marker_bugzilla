@@ -16,6 +16,7 @@ submitting feature requests or issues to [issues][githubissues]
 ## Requires
   * pytest >= 2.2.3
   * python-bugzilla >= 0.6.2
+  * six
 
 ## Installation
 ``pip-python install pytest_marker_bugzilla``
@@ -39,18 +40,49 @@ submitting feature requests or issues to [issues][githubissues]
      
      ``py.test --help``
      
-  2. Mark your tests with bugzilla marker and bug id.
-  
-     ``@pytest.mark.bugzilla('bug_id')``
+  2. Mark your tests with bugzilla marker and bug id(s).
+
+     ```python
+     @pytest.mark.bugzilla('bug_id', ...)
+     ```
+
+     In order to skip the test, all of the specified bugs must lead to
+     skipping. Even just one unskipped means that the test will not be skipped.
      
   3. Run py.test with bugzilla option to enable the plugin.
   
      ``py.test --bugzilla``
 
+### Conditional guards
+
+The conditional guards, are functions which can xfail or skip the test when
+condition is met.
+
+```python
+@pytest.mark.bugzilla(1234, skip_when=lambda bug: bug.status == "POST")
+```
+
+```python
+@pytest.mark.bugzilla(
+    567, xfail_when=lambda bug, version: bug.fixed_in > version
+)
+```
+
+The guard is a function, it will receive max. 2 parameters. It depends what
+parameters you specify.
+
+The parameters are:
+
+  * bug - specific BZ bug
+  * version - tested product version
+
+Order or presence does not matter.
+
 ## Test library
+
 When you do changes please make sure that you pass current tests.
 
-``python setup.py test``
+``tox``
 
 Please also try to cover new features by writing new tests.
 
