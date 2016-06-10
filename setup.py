@@ -24,7 +24,7 @@ setup(
     long_description=open('README.txt').read(),
     license='GPL',
     author='Eric Sammons','lukas-bednar',
-    author_email='elsammons@gmail.com','lukyn17@gmail.com'
+    author_email='elsammons@gmail.com','lukyn17@gmail.com',
     url='http://github.com/eanxgeek/pytest_marker_bugzilla',
     platforms=['linux', 'osx', 'win32'],
     py_modules=['pytest_marker_bugzilla'],
