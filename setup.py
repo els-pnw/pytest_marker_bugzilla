@@ -19,7 +19,7 @@ class PyTest(TestCommand):
 
 setup(
     name="pytest-marker-bugzilla",
-    version="0.05",
+    version="0.7",
     description='py.test bugzilla integration plugin, using markers',
     long_description=open('README.txt').read(),
     license='GPL',
