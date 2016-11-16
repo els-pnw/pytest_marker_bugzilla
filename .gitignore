@@ -1,4 +1,5 @@
 *.pyc
+!setup.cfg
 *.cfg
 *.swp
 *.egg-info
