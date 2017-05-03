@@ -8,3 +8,5 @@ htmlcov
 build
 dist
 MANIFEST
+AUTHORS
+ChangeLog
