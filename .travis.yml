@@ -4,6 +4,8 @@ python:
     - "2.7"
     - "3.4"
 install:
-    - pip install tox tox-travis
+    - pip install tox tox-travis codecov
 script:
     - tox
+after_success:
+    - codecov
