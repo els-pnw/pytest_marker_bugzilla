@@ -6,9 +6,11 @@ python:
     - "3.5"
     - "3.6"
 install:
-    - pip install tox tox-travis
+    - pip install tox tox-travis codecov
 script:
     - tox
+after_success:
+    - codecov
 deploy:
   provider: pypi
   user: "lukas-bednar"

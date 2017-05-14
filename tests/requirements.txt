@@ -1,2 +1,2 @@
 pytest-xdist
-pytest-cov
+coverage
