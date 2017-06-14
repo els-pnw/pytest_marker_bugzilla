@@ -123,19 +123,6 @@ class BugzillaBugs(object):
                 _bugs_pool[bug_id] = bug
             yield _bugs_pool[bug_id]
 
-    def bug(self, id):
-        """Returns Bugzilla's Bug object for given ID"""
-        id = int(id)
-        if id not in self.bug_ids:
-            raise ValueError("Could not find bug with id {0}".format(id))
-
-        if id in _bugs_pool:
-            return _bugs_pool[id]
-
-        bug = BugWrapper(self.bugzilla.getbug(id), self.loose)
-        _bugs_pool[id] = bug
-        return bug
-
 
 class BugzillaHooks(object):
     def __init__(self, config, bugzilla, loose, version="0"):
