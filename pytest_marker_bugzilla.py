@@ -162,7 +162,13 @@ class BugzillaHooks(object):
         if not storages:
             return True
 
-        return item.parent.obj.storage in storages
+        if "storage" in item.fixturenames:
+            for storage in storages:
+                if storage in item._genid:
+                    return True
+            return False
+        else:
+            return item.parent.obj.storage in storages
 
     def _should_skip_due_to_ppc(self, item, is_ppc):
         return is_ppc is None or is_ppc is True
