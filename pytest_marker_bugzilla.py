@@ -162,10 +162,13 @@ class BugzillaHooks(object):
         if not storages:
             return True
 
-        if "storage" in item.fixturenames:
-            for storage in storages:
-                if storage in item._genid:
-                    return True
+        if "storage" in item.fixturenames and hasattr(item, "callspec"):
+            parametrized_params = getattr(item.callspec, "params", {})
+            parametrized_storage = parametrized_params.get("storage")
+            if parametrized_storage:
+                for storage in storages:
+                    if storage in parametrized_storage:
+                        return True
             return False
         else:
             return item.parent.obj.storage in storages
