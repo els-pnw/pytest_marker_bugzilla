@@ -205,7 +205,7 @@ class BugzillaHooks(object):
             return
 
         bugs_in_cache = item.funcargs["bugs_in_cache"]
-        bugzilla_marker_related_to_case = item.get_marker('bugzilla')
+        bugzilla_marker_related_to_case = item.get_closest_marker(name='bugzilla')
         xfail = kwargify(
             bugzilla_marker_related_to_case.kwargs.get(
                 "xfail_when", lambda: False
@@ -333,22 +333,20 @@ class BugzillaHooks(object):
         if reporter:
             reporter.write("Checking for bugzilla-related tests\n", bold=True)
         cache = {}
-        for i, item in enumerate(
-            filter(lambda i: i.get_marker("bugzilla") is not None, items)
-        ):
-            marker = item.get_marker('bugzilla')
-            bugs = marker.args[0]
-            bugs_ids = bugs.keys()
+        for item in items:
+            for marker in item.iter_markers(name='bugzilla'):
+                bugs = marker.args[0]
+                bugs_ids = bugs.keys()
 
-            for bz_id in bugs_ids:
-                if bz_id not in cache:
-                    if reporter:
-                        reporter.write(".")
-                    cache[bz_id] = BugzillaBugs(
-                        self.bugzilla, self.loose, bz_id
-                    )
+                for bz_id in bugs_ids:
+                    if bz_id not in cache:
+                        if reporter:
+                            reporter.write(".")
+                        cache[bz_id] = BugzillaBugs(
+                            self.bugzilla, self.loose, bz_id
+                        )
 
-            item.funcargs["bugs_in_cache"] = cache
+                item.funcargs["bugs_in_cache"] = cache
 
         if reporter:
             reporter.write(
