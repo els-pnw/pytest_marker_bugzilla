@@ -142,14 +142,17 @@ class BugzillaHooks(object):
         """
         if "bugzilla" not in item.keywords:
             return
-        bugs = item.funcargs["bugs"]
+        bugs = item.funcargs["bugs_in_cache"]
         will_skip = True
         skippers = []
-        for bug in bugs.bugs_gen:
-            if bug.status not in ["NEW", "ASSIGNED", "ON_DEV"]:
-                will_skip = False
-            else:
-                skippers.append(bug)
+        bugs_obj = bugs.values()
+        for bug_obj in bugs_obj:
+            for bz in bug_obj.bugs_gen:
+                if bz.status not in ["NEW", "ASSIGNED", "ON_DEV"]:
+                    will_skip = False
+                else:
+                    skippers.append(bz)
+
         url = "{0}?id=".format(
             self.bugzilla.url.replace("xmlrpc.cgi", "show_bug.cgi"),
         )
@@ -167,7 +170,7 @@ class BugzillaHooks(object):
                 )
             )
 
-        marker = item.get_marker('bugzilla')
+        marker = item.get_closest_marker(name='bugzilla')
         xfail = kwargify(marker.kwargs.get("xfail_when", lambda: False))
         skip = kwargify(marker.kwargs.get("skip_when", lambda: False))
         if skip:
@@ -190,26 +193,30 @@ class BugzillaHooks(object):
                 )
 
     def evaluate_skip(self, skip, bugs):
-        for bug in bugs.bugs_gen:
-            context = {"bug": bug}
-            if self.version:
-                context["version"] = LooseVersion(self.version)
-            if skip(**context):
-                pytest.skip(
-                    "Skipped due to a given condition: {0}".format(
-                        inspect.getsource(skip)
+        bugs_obj = bugs.values()
+        for bug_obj in bugs_obj:
+            for bz in bug_obj.bugs_gen:
+                context = {"bug": bz}
+                if self.version:
+                    context["version"] = LooseVersion(self.version)
+                if skip(**context):
+                    pytest.skip(
+                        "Skipped due to a given condition: {0}".format(
+                            inspect.getsource(skip)
+                        )
                     )
-                )
 
     def evaluate_xfail(self, xfail, bugs):
         results = []
-        for bug in bugs.bugs_gen:
-            context = {"bug": bug}
-            if self.version:
-                context["version"] = LooseVersion(self.version)
-            if xfail(**context):
-                results.append(bug)
-        return results
+        bugs_obj = bugs.values()
+        for bug_obj in bugs_obj:
+            for bz in bug_obj.bugs_gen:
+                context = {"bug": bz}
+                if self.version:
+                    context["version"] = LooseVersion(self.version)
+                if xfail(**context):
+                    results.append(bz)
+            return results
 
     def pytest_collection_modifyitems(self, session, config, items):
         reporter = config.pluginmanager.getplugin("terminalreporter")
@@ -217,17 +224,21 @@ class BugzillaHooks(object):
         if reporter:
             reporter.write("Checking for bugzilla-related tests\n", bold=True)
         cache = {}
-        for i, item in enumerate(
-            filter(lambda i: i.get_marker("bugzilla") is not None, items)
-        ):
-            marker = item.get_marker('bugzilla')
-            # (O_O) for caching
-            bugs = tuple(sorted(set(map(int, marker.args))))
-            if bugs not in cache:
-                if reporter:
-                    reporter.write(".")
-                cache[bugs] = BugzillaBugs(self.bugzilla, self.loose, *bugs)
-            item.funcargs["bugs"] = cache[bugs]
+        for item in items:
+            for marker in item.iter_markers(name='bugzilla'):
+                bugs = marker.args[0]
+                bugs_ids = bugs.keys()
+
+                for bz_id in bugs_ids:
+                    if bz_id not in cache:
+                        if reporter:
+                            reporter.write(".")
+                        cache[bz_id] = BugzillaBugs(
+                            self.bugzilla, self.loose, bz_id
+                        )
+
+                item.funcargs["bugs_in_cache"] = cache
+
         if reporter:
             reporter.write(
                 "\nChecking for bugzilla-related tests has finished\n",
