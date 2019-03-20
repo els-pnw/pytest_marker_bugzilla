@@ -144,12 +144,9 @@ class BugzillaHooks(object):
             return
 
         bugs = item.funcargs["bugs"]
-        will_skip = True
         skippers = []
         for bz in bugs.bugs_gen:
-            if bz.status not in ["NEW", "ASSIGNED", "ON_DEV"]:
-                will_skip = False
-            else:
+            if bz.status in ["NEW", "ASSIGNED", "ON_DEV"]:
                 skippers.append(bz)
 
         url = "{0}?id=".format(
