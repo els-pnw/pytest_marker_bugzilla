@@ -113,7 +113,7 @@ def test_new_int_bug_failing(testdir):
         import os
         import pytest
 
-        @pytest.mark.bugzilla('1')
+        @pytest.mark.bugzilla(1)
         def test_new_bug():
             assert(os.path.exists('/etcccc'))
     """)
