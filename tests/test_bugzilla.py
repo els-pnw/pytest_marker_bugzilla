@@ -15,6 +15,8 @@ FAKE_BUGS = {
         "fixed_in": None,
         "status": 'NEW',
         "target_release": None,
+        "resolution": 'foo 1',
+        "summary": 'ONE',
     },
     "2": {
         "id": 2,
@@ -22,6 +24,8 @@ FAKE_BUGS = {
         "fixed_in": None,
         "status": 'CLOSED',
         "target_release": None,
+        "resolution": 'foo 2',
+        "summary": 'TWO',
     },
     "3": {
         "id": 3,
@@ -29,6 +33,8 @@ FAKE_BUGS = {
         "fixed_in": 2.0,
         "status": 'POST',
         "target_release": None,
+        "resolution": 'foo 3',
+        "summary": 'THREE',
     },
     "4": {
         "id": 4,
@@ -36,6 +42,8 @@ FAKE_BUGS = {
         "fixed_in": None,
         "status": 'NEW',
         "target_release": None,
+        "resolution": 'foo 4',
+        "summary": 'FOUR',
     },
 }
 
@@ -177,21 +185,21 @@ def test_more_cases(testdir):
     result.assert_outcomes(1, 1, 1)
 
 
-def test_multiple_bugs_failure(testdir):
+def test_multiple_bugs_skip_1(testdir):
     testdir.makeconftest(CONFTEST)
     testdir.makepyfile("""
         import os
         import pytest
 
-        @pytest.mark.bugzilla('1', '2', '4')
+        @pytest.mark.bugzilla('1', '4', '2')
         def test_new_bug():
             assert(os.path.exists('/etcccc'))
     """)
     result = testdir.runpytest(*BUGZILLA_ARGS)
-    result.assert_outcomes(0, 0, 1)
+    result.assert_outcomes(0, 1, 0)
 
 
-def test_multiple_bugs_skip(testdir):
+def test_multiple_bugs_skip_2(testdir):
     testdir.makeconftest(CONFTEST)
     testdir.makepyfile("""
         import os
@@ -225,10 +233,7 @@ def test_xfail_when_feature(testdir):
         import os
         import pytest
 
-        @pytest.mark.bugzilla(
-            '3',
-            xfail_when=lambda bug, version: bug.fixed_in > version
-        )
+        @pytest.mark.bugzilla('3', xfail_when=lambda bug, version: bug.fixed_in > version)
         def test_new_bug():
             assert(os.path.exists('/etcccc'))
     """)
