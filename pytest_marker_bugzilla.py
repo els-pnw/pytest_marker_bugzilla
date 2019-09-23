@@ -10,7 +10,7 @@ from functools import wraps
 """This plugin integrates pytest with bugzilla
 
 It allows the tester to mark a test with a bug id. The test will be skipped
-until the bug status is no longer NEW, ON_DEV, or ASSIGNED.
+until the bug status is no longer NEW, ON_DEV, MODIFIED, POST or ASSIGNED.
 
 You must set the url either at the command line or in bugzilla.cfg.
 
@@ -146,7 +146,7 @@ class BugzillaHooks(object):
         bugs = item.funcargs["bugs"]
         skippers = []
         for bz in bugs.bugs_gen:
-            if bz.status in ["NEW", "ASSIGNED", "ON_DEV"]:
+            if bz.status in ["NEW", "ASSIGNED", "ON_DEV", "MODIFIED", "POST"]:
                 skippers.append(bz)
 
         url = "{0}?id=".format(
