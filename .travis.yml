@@ -1,21 +1,18 @@
 language: python
 python:
-    - "2.7"
-    - "3.6"
+- '2.7'
+- '3.6'
 install:
-    - pip install tox tox-travis codecov
+- pip install tox tox-travis codecov
 script:
-    - tox
+- tox
 after_success:
-    - codecov
+- codecov
 deploy:
   provider: pypi
-  user: "lukas-bednar"
+  user: eanxgeek
   password:
-    secure: "\
-      ks4q6t0YBc4i3hr5uYCepUi05SuBfkA6l2vakuqcQunuwClaCN3ryP5aKCKk3673wdKBh2ee\
-      L+VrKrmEnyRTrgo+t02ODSibAMeytwq254m526FiUbATemNrDyPtv7XTO/Yp9yFPwHbpoH8b\
-      dTa4MhTUm6qXcRtRdYvfU8zVKUU="
+    secure: Fn9cmk/TiBIhORUE5MnSmv2UJU3GZlTm6cVHNIlNoJI2515wRjZxFbSUsWul8DmZmUEUxHuhUeOovIcrL/wV32ndkrYxSyRDnOvpTIWAFhPXZdESCck5pK154r4IRr9ep2Rfzvr43Yk3ixAMFpQf1gGGvrZlh/Oo4vnrK6A0ifnGuvnLrSSBE34XF2nAZC3nRr0cgJwSkplU+JqTx3TOjLjZy4jMShvS2S/pT5niWyNfahFHSQ1Nh1QaDpD0g+Ilr2gyk2L/8IoyqLK62GDYFFq/zr7f/Gsa/S6rGKcZd+1uCngGYpj48k3ieH0Nz3VYZ20rtAtGOq5DOFFKH9/TKCiFX3l725tw6n65ueGUp4mQwLR8GcIfrajAgv3VLQDII7Mf6S8TExg677woGuiqawi9DNygjxs32Pj8ZCmAJ19xXejDRDvA7G3gAHh0UeAGOc5YsARs7QjedNVlGblioff8CVlQgVb+NbzT7Yb/eLUER/yxww8lY0o4fQWsAIcH/JaPPfqgIFXiv/uuNUc9FwoPkbSoiJkCxBZNC6p/vKr38DvqznD87ScKd3P1Qc5UB/bWvXBpu5Qd5B9NwOaDuR8RfhrtzoTSBI0IJA5ZEFm8hLQ+Cw3wNMEF0LQyoH+Xhxz0Vqs7HP/WrcRAJJ4yKeg8jKbEYA71gt1TnEk0mO4=
   on:
     branch: master
     tags: true
