@@ -251,7 +251,7 @@ def test_skip_when_feature(testdir):
 #     testdir.makepyfile("""
 #         import os
 #         import pytest
-
+#
 #         @pytest.mark.bugzilla('3', xfail_when=lambda bug, version: bug.fixed_in > version)
 #         def test_new_bug():
 #             assert(os.path.exists('/etcccc'))
