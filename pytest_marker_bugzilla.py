@@ -282,6 +282,14 @@ def pytest_addoption(parser):
         help='Overrides the bugzilla password in bugzilla.cfg.',
     )
     group.addoption(
+        '--bugzilla-api-key',
+        action='store',
+        dest='bugzilla_api_key',
+        default=get_value_from_config_parser(config, 'bugzilla_api_key', ''),
+        metavar='api_key',
+        help='Overrides the bugzilla api key in bugzilla.cfg.',
+    )
+    group.addoption(
         '--bugzilla-project-version',
         action='store',
         dest='bugzilla_version',
@@ -312,10 +320,17 @@ def pytest_configure(config):
         "markers",
         "bugzilla(*bug_ids, **guards): Bugzilla integration",
     )
+    
     if config.getvalue("bugzilla") and config.getvalue('bugzilla_url'):
         url = config.getvalue('bugzilla_url')
-        user = config.getvalue('bugzilla_username')
-        password = config.getvalue('bugzilla_password')
+        if config.getvalue('bugzilla_username') and config.getvalue('bugzilla_password'):
+            user = config.getvalue('bugzilla_username')
+            password = config.getvalue('bugzilla_password')
+            bz = bugzilla.Bugzilla(url=url, user=user, password=password)
+        elif config.getvalue('bugzilla_api_key'):
+            api_key = config.getvalue('bugzilla_api_key')
+            bz = bugzilla.Bugzilla(url=url, api_key=api_key)
+    
         version = config.getvalue('bugzilla_version')
         loose = [
             x.strip()
@@ -323,8 +338,6 @@ def pytest_configure(config):
         ]
         if len(loose) == 1 and not loose[0]:
             loose = []
-
-        bz = bugzilla.Bugzilla(url=url, user=user, password=password)
 
         my = BugzillaHooks(config, bz, loose, version)
         assert config.pluginmanager.register(my, "bugzilla_helper")
