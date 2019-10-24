@@ -321,6 +321,7 @@ def pytest_configure(config):
         "bugzilla(*bug_ids, **guards): Bugzilla integration",
     )
     
+    bz = None
     if config.getvalue("bugzilla") and config.getvalue('bugzilla_url'):
         url = config.getvalue('bugzilla_url')
         if config.getvalue('bugzilla_username') and config.getvalue('bugzilla_password'):
@@ -330,6 +331,9 @@ def pytest_configure(config):
         elif config.getvalue('bugzilla_api_key'):
             api_key = config.getvalue('bugzilla_api_key')
             bz = bugzilla.Bugzilla(url=url, api_key=api_key)
+
+        if not bz:
+            raise Exception('Please specify a valid bugzilla_username + bugzilla_password or a valid bugzilla_api_key')
     
         version = config.getvalue('bugzilla_version')
         loose = [
