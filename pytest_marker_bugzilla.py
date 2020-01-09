@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import sys
+
 import six
 import bugzilla
 import inspect
@@ -76,7 +78,11 @@ def kwargify(f):
     @wraps(f)
     def wrapped(**kwargs):
         args = []
-        for arg in inspect.getargspec(f).args:
+        if sys.version_info.major >= 3:
+            function_args = inspect.getfullargspec(f).args
+        else:
+            function_args = inspect.getargspec(f).args
+        for arg in function_args:
             if arg not in kwargs:
                 raise TypeError(
                     "Required parameter {0} not found in the "
