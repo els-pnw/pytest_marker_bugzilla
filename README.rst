@@ -1,5 +1,3 @@
-|Build Status| |Code Coverage|
-
 Intro
 =====
 
