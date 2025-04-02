@@ -108,8 +108,3 @@ When you do changes please make sure that you pass current tests.
 Please also try to cover new features by writing new tests.
 
 Enjoy.
-
-.. |Build Status| image:: https://travis-ci.org/eanxgeek/pytest_marker_bugzilla.svg?branch=master
-   :target: https://travis-ci.org/eanxgeek/pytest_marker_bugzilla
-.. |Code Coverage| image:: https://codecov.io/gh/eanxgeek/pytest_marker_bugzilla/branch/master/graph/badge.svg
-   :target: https://codecov.io/gh/eanxgeek/pytest_marker_bugzilla
